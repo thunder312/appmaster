@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using Appmaster.Services;
@@ -58,6 +58,12 @@ public partial class App : Application
             };
             t.Start();
         }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        SshTunnel.AlleBeenden();
+        base.OnExit(e);
     }
 
     /// <summary>Beim ersten Start: wo soll die Konfiguration liegen (nur dieser PC, Dropbox, eigener Ordner)?</summary>

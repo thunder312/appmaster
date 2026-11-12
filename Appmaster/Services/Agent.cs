@@ -89,7 +89,7 @@ public static class AgentClient
 
     private static HttpRequestMessage Anfrage(Rechner r, HttpMethod m, string pfad)
     {
-        var basis = r.AgentUrl.TrimEnd('/');
+        var basis = SshTunnel.AgentUrl(r).TrimEnd('/');
         // PHP-Status ist eine einzelne Datei: Adresse unverändert verwenden.
         var url = r.AgentArt == AgentArt.PhpStatus ? basis : basis + pfad;
         var req = new HttpRequestMessage(m, url);
@@ -97,13 +97,14 @@ public static class AgentClient
         return req;
     }
 
-    public static bool Eingerichtet(Rechner r) => r.AgentArt != AgentArt.Keiner && r.AgentUrl.Length > 0;
+    public static bool Eingerichtet(Rechner r) => r.AgentArt != AgentArt.Keiner && SshTunnel.AgentUrl(r).Length > 0;
 
     public static async Task<AgentStatus?> StatusAsync(Rechner r, CancellationToken ct = default)
     {
         if (!Eingerichtet(r)) return null;
         try
         {
+            await SshTunnel.SicherstellenAsync(r);
             using var resp = await Http.SendAsync(Anfrage(r, HttpMethod.Get, "/status"), ct);
             if (!resp.IsSuccessStatusCode) return null;
             return JsonSerializer.Deserialize<AgentStatus>(await resp.Content.ReadAsStringAsync(ct));
@@ -116,6 +117,7 @@ public static class AgentClient
         if (r.AgentArt != AgentArt.LinuxAgent) return (false, "Auf diesem Rechner ist kein Linux-Agent eingerichtet.");
         try
         {
+            await SshTunnel.SicherstellenAsync(r);
             using var resp = await Http.SendAsync(Anfrage(r, HttpMethod.Post, pfad));
             var text = await resp.Content.ReadAsStringAsync();
             return (resp.IsSuccessStatusCode, text);

@@ -70,6 +70,8 @@ public static class KonfigStore
     /// <summary>Zugangsschlüssel der Agenten: nur auf diesem PC, damit sie nicht in die Dropbox wandern.</summary>
     private static string TokenDatei => Path.Combine(Ort.LokalerOrdner, "tokens.json");
 
+    private static string SchluesselDatei => Path.Combine(Ort.LokalerOrdner, "tunnelkeys.json");
+
     public static Konfiguration Laden()
     {
         var k = new Konfiguration();
@@ -90,6 +92,17 @@ public static class KonfigStore
             }
         }
         catch { /* Tokens neu eintragen */ }
+
+        try
+        {
+            if (File.Exists(SchluesselDatei))
+            {
+                var keys = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(SchluesselDatei)) ?? new();
+                foreach (var r in k.Rechner)
+                    if (keys.TryGetValue(r.Id, out var s)) r.TunnelSchluessel = s;
+            }
+        }
+        catch { /* Schlüsselpfad neu eintragen */ }
         return k;
     }
 
@@ -103,5 +116,7 @@ public static class KonfigStore
         Directory.CreateDirectory(Ort.LokalerOrdner);
         var tokens = k.Rechner.Where(r => r.AgentToken.Length > 0).ToDictionary(r => r.Id, r => r.AgentToken);
         File.WriteAllText(TokenDatei, JsonSerializer.Serialize(tokens, Optionen));
+        var keys = k.Rechner.Where(r => r.TunnelSchluessel.Length > 0).ToDictionary(r => r.Id, r => r.TunnelSchluessel);
+        File.WriteAllText(SchluesselDatei, JsonSerializer.Serialize(keys, Optionen));
     }
 }

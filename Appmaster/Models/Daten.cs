@@ -46,6 +46,16 @@ public sealed class Rechner
     public string AgentUrl { get; set; } = "";
     /// <summary>Wird nur lokal auf diesem PC gespeichert (nie in der Dropbox-Konfiguration), siehe KonfigStore.</summary>
     [JsonIgnore] public string AgentToken { get; set; } = "";
+    /// <summary>Agent über einen SSH-Tunnel erreichen (z. B. vServer, dessen Agent nur auf 127.0.0.1 lauscht). Appmaster startet und überwacht den Tunnel selbst.</summary>
+    public bool TunnelAktiv { get; set; }
+    /// <summary>SSH-Ziel, z. B. root@82.165.153.177 (oder ein Name aus ~/.ssh/config).</summary>
+    public string TunnelZiel { get; set; } = "";
+    /// <summary>Lokaler Port am PC, zu dem Appmaster verbindet (Agent-Adresse wird dann http://127.0.0.1:port).</summary>
+    public int TunnelLokalPort { get; set; } = 8766;
+    /// <summary>Port des Agents auf dem Server (Standard 8765).</summary>
+    public int TunnelServerPort { get; set; } = 8765;
+    /// <summary>Privater Schlüssel (OpenSSH-Format, keine .ppk). Pfade sind je PC verschieden, daher nur lokal gespeichert.</summary>
+    [JsonIgnore] public string TunnelSchluessel { get; set; } = "";
     [JsonIgnore] public bool IstLokal => string.IsNullOrWhiteSpace(Adresse);
 }
 

@@ -322,12 +322,26 @@ public partial class MainWindow : Window
         });
         var url = f.Text("Agent-Adresse", r.AgentUrl, "Linux: http://athene:8765 · Webhosting: https://deine-seite.de/appmaster/status.php");
         var token = f.Text("Agent-Token", r.AgentToken, "Wird nur auf diesem PC gespeichert, nicht in der (Dropbox-)Konfiguration.");
+        var tunnel = f.Haken("Agent über SSH-Tunnel erreichen", r.TunnelAktiv,
+            "Für Server im Internet: Der Agent lauscht dort nur auf 127.0.0.1 (install.sh --bind 127.0.0.1). Appmaster baut den Tunnel selbst auf und beendet ihn beim Schließen. Die Agent-Adresse oben wird dann ignoriert.");
+        var tZiel = f.Text("Tunnel: SSH-Ziel", r.TunnelZiel, "z. B. root@82.165.153.177 oder ein Name aus ~/.ssh/config");
+        var tSchl = f.Pfad("Tunnel: privater Schlüssel", r.TunnelSchluessel, ordner: false,
+            hinweis: "OpenSSH-Format (z. B. C:\\Users\\du\\.ssh\\id_ed25519), keine .ppk-Datei. Wird nur auf diesem PC gespeichert. Leer = Standardschlüssel bzw. ssh-Konfiguration.");
+        var tLokal = f.Text("Tunnel: lokaler Port", r.TunnelLokalPort.ToString(), "Port an diesem PC, z. B. 8766 (je Server ein anderer).");
+        var tServer = f.Text("Tunnel: Agent-Port auf dem Server", r.TunnelServerPort.ToString(), "Standard 8765.");
 
         bool ok = f.Zeigen(() =>
         {
             if (string.IsNullOrWhiteSpace(name.Text)) return "Bitte einen Namen eintragen.";
             if (mac.Text.Trim().Length > 0 && !WakeOnLan.MacGueltig(mac.Text)) return "Die MAC-Adresse ist ungültig (Beispiel: aa:bb:cc:dd:ee:ff).";
-            if (Formular.Gewaehlt<AgentArt>(art) != AgentArt.Keiner && string.IsNullOrWhiteSpace(url.Text)) return "Bitte die Agent-Adresse eintragen.";
+            if (tunnel.IsChecked == true)
+            {
+                if (string.IsNullOrWhiteSpace(tZiel.Text)) return "Bitte das SSH-Ziel für den Tunnel eintragen (z. B. root@82.165.153.177).";
+                if (!int.TryParse(tLokal.Text, out var lp) || lp is < 1024 or > 65535) return "Der lokale Tunnel-Port muss zwischen 1024 und 65535 liegen.";
+                if (!int.TryParse(tServer.Text, out var sp) || sp is < 1 or > 65535) return "Der Agent-Port auf dem Server ist ungültig.";
+                if (tSchl.Text.Trim().EndsWith(".ppk", StringComparison.OrdinalIgnoreCase)) return "OpenSSH kann keine .ppk-Schlüssel lesen. Nimm die Datei ohne Endung (OpenSSH-Format) oder exportiere sie mit PuTTYgen.";
+            }
+            else if (Formular.Gewaehlt<AgentArt>(art) != AgentArt.Keiner && string.IsNullOrWhiteSpace(url.Text)) return "Bitte die Agent-Adresse eintragen.";
             return null;
         });
         if (!ok) return null;
@@ -339,6 +353,12 @@ public partial class MainWindow : Window
         r.AgentArt = Formular.Gewaehlt<AgentArt>(art);
         r.AgentUrl = url.Text.Trim();
         r.AgentToken = token.Text.Trim();
+        r.TunnelAktiv = tunnel.IsChecked == true;
+        r.TunnelZiel = tZiel.Text.Trim();
+        r.TunnelSchluessel = tSchl.Text.Trim();
+        if (int.TryParse(tLokal.Text, out var lport)) r.TunnelLokalPort = lport;
+        if (int.TryParse(tServer.Text, out var sport)) r.TunnelServerPort = sport;
+        SshTunnel.Beenden(r.Id);   // mit geänderten Einstellungen neu aufbauen
         return r;
     }
 }
