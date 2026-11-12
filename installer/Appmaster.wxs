@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WiX-v5-Autor-Datei für den Appmaster-Installer. Bauen: installer\build.ps1
+     Per-User-Installation nach %LOCALAPPDATA%\Programs\Appmaster (keine Admin-Rechte nötig), Startmenü-Eintrag, Deinstallation über "Apps & Features".
+     Die Dateiliste (Dateien.wxs) erzeugt build.ps1 aus dem Publish-Ordner. -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Appmaster" Manufacturer="Daniel Ertl" Version="$(var.Version)"
+           UpgradeCode="3B7D5C02-6E1A-4F93-9A57-C2D80E4B1F36" Scope="perUser" Language="1031">
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="Eine neuere Version von Appmaster ist bereits installiert." />
+    <MediaTemplate EmbedCab="yes" />
+    <Icon Id="AppIcon.ico" SourceFile="app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Appmaster" />
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Appmaster" Level="1">
+      <ComponentGroupRef Id="AppDateien" />
+      <ComponentRef Id="Verknuepfung" />
+    </Feature>
+
+    <Component Id="Verknuepfung" Directory="ProgramMenuFolder" Guid="9C4E21A7-35B8-4D60-8F1B-7A2D6E93C514">
+      <Shortcut Id="StartMenue" Name="Appmaster" Target="[INSTALLFOLDER]Appmaster.exe" WorkingDirectory="INSTALLFOLDER" />
+      <RegistryValue Root="HKCU" Key="Software\Eulenwerk\Appmaster" Name="Installiert" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+  </Package>
+</Wix>
