@@ -49,7 +49,22 @@ public static class Dlg
             box = new CheckBox { Content = haken, Margin = new Thickness(0, 16, 0, 0) };
             inhalt.Children.Add(box);
         }
-        inhalt.Children.Add(reihe);
+        // Passen die Knöpfe nebeneinander nicht in die Fensterbreite (lange Beschriftungen), stehen sie untereinander.
+        reihe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        if (reihe.DesiredSize.Width > w.Width - 48 - 8)
+        {
+            var spalte = new StackPanel { Margin = new Thickness(0, 22, 0, 0) };
+            var liste = reihe.Children.Cast<Button>().ToList();
+            reihe.Children.Clear();
+            foreach (var b in liste)
+            {
+                b.Margin = new Thickness(0, spalte.Children.Count == 0 ? 0 : 8, 0, 0);
+                b.HorizontalAlignment = HorizontalAlignment.Stretch;
+                spalte.Children.Add(b);
+            }
+            inhalt.Children.Add(spalte);
+        }
+        else inhalt.Children.Add(reihe);
         w.Content = inhalt;
         w.ShowDialog();
         angehakt = box?.IsChecked == true;
