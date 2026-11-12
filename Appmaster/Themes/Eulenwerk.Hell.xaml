@@ -1,0 +1,34 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Eulenwerk: helle Grundfarben. Wird von EulenwerkTheme.Anwenden(hell: true, …) nach Eulenwerk.Theme.xaml eingehängt. -->
+  <Color x:Key="EwBgColor">#F5F6F8</Color>
+  <SolidColorBrush x:Key="EwBg" Color="{StaticResource EwBgColor}" />
+  <Color x:Key="EwSurfaceColor">#FFFFFF</Color>
+  <SolidColorBrush x:Key="EwSurface" Color="{StaticResource EwSurfaceColor}" />
+  <Color x:Key="EwSurface2Color">#F0F2F5</Color>
+  <SolidColorBrush x:Key="EwSurface2" Color="{StaticResource EwSurface2Color}" />
+  <Color x:Key="EwSurfaceHoverColor">#E8EBEF</Color>
+  <SolidColorBrush x:Key="EwSurfaceHover" Color="{StaticResource EwSurfaceHoverColor}" />
+  <Color x:Key="EwBorderColor">#DFE3E8</Color>
+  <SolidColorBrush x:Key="EwBorder" Color="{StaticResource EwBorderColor}" />
+  <Color x:Key="EwBorderStrongColor">#C8CED6</Color>
+  <SolidColorBrush x:Key="EwBorderStrong" Color="{StaticResource EwBorderStrongColor}" />
+  <Color x:Key="EwTextColor">#1A1D21</Color>
+  <SolidColorBrush x:Key="EwText" Color="{StaticResource EwTextColor}" />
+  <Color x:Key="EwTextMutedColor">#58616C</Color>
+  <SolidColorBrush x:Key="EwTextMuted" Color="{StaticResource EwTextMutedColor}" />
+  <Color x:Key="EwTextFaintColor">#8A929C</Color>
+  <SolidColorBrush x:Key="EwTextFaint" Color="{StaticResource EwTextFaintColor}" />
+  <Color x:Key="EwTextOnAccentColor">#FFFFFF</Color>
+  <SolidColorBrush x:Key="EwTextOnAccent" Color="{StaticResource EwTextOnAccentColor}" />
+  <Color x:Key="EwOkColor">#138A5B</Color>
+  <SolidColorBrush x:Key="EwOk" Color="{StaticResource EwOkColor}" />
+  <Color x:Key="EwWarnColor">#B7791F</Color>
+  <SolidColorBrush x:Key="EwWarn" Color="{StaticResource EwWarnColor}" />
+  <Color x:Key="EwDangerColor">#D64545</Color>
+  <SolidColorBrush x:Key="EwDanger" Color="{StaticResource EwDangerColor}" />
+  <Color x:Key="EwInfoColor">#2F6FE0</Color>
+  <SolidColorBrush x:Key="EwInfo" Color="{StaticResource EwInfoColor}" />
+  <Color x:Key="EwInputBgColor">#FFFFFF</Color>
+  <SolidColorBrush x:Key="EwInputBg" Color="{StaticResource EwInputBgColor}" />
+</ResourceDictionary>

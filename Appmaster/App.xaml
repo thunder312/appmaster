@@ -1,0 +1,14 @@
+﻿<Application x:Class="Appmaster.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Eulenwerk Design-System: Kategorie Administration (Cyan), danach das Theme -->
+                <ResourceDictionary Source="Themes/Eulenwerk.Administration.xaml" />
+                <ResourceDictionary Source="Themes/Eulenwerk.Theme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolZuSichtbar" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

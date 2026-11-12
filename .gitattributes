@@ -1,0 +1,4 @@
+# Skripte für Linux brauchen LF, auch wenn sie unter Windows ausgecheckt werden
+*.sh text eol=lf
+*.py text eol=lf
+*.php text eol=lf

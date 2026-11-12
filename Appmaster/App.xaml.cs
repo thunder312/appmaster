@@ -1,0 +1,116 @@
+﻿using System.IO;
+using System.Windows;
+using System.Windows.Media.Imaging;
+using Appmaster.Services;
+using Appmaster.Views;
+using EulenwerkCI;
+
+namespace Appmaster;
+
+public partial class App : Application
+{
+    public const string Name = "Appmaster";
+    public const string Version = "0.1.0";
+
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+        EulenwerkTheme.Initialisieren("Administration", Name);
+
+        // Entwicklerhilfe: "Appmaster.exe --icon <ziel.ico>" schreibt das Logo als .ico und beendet sich.
+        if (e.Args.Length == 2 && e.Args[0] == "--icon")
+        {
+            IcoSchreiben(e.Args[1]);
+            Shutdown();
+            return;
+        }
+
+        if (Ort.Erststart && e.Args.Length == 0)
+        {
+            // Der Dialog ist das einzige Fenster – ohne das würde Schließen die App beenden.
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            ErststartAbfragen();
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+        }
+
+        var fenster = new MainWindow();
+        MainWindow = fenster;
+        fenster.Show();
+
+        // Entwicklerhilfe: "--shot <ziel.png> [apps|ressourcen|rechner] [hell]" rendert das Fenster und beendet sich.
+        if (e.Args.Length >= 2 && e.Args[0] == "--shot")
+        {
+            if (e.Args.Contains("hell")) EulenwerkTheme.Setzen(EwDesign.Hell);
+            fenster.SeiteWaehlen(e.Args.Length > 2 ? e.Args[2] : "apps");
+            var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
+            t.Tick += (_, _) =>
+            {
+                var bmp = new RenderTargetBitmap((int)fenster.ActualWidth, (int)fenster.ActualHeight, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                var grund = new System.Windows.Media.DrawingVisual();
+                using (var dc = grund.RenderOpen()) dc.DrawRectangle(fenster.Background, null, new Rect(0, 0, fenster.ActualWidth, fenster.ActualHeight));
+                bmp.Render(grund);
+                bmp.Render((System.Windows.Media.Visual)fenster.Content);
+                var enc = new PngBitmapEncoder();
+                enc.Frames.Add(BitmapFrame.Create(bmp));
+                using var f = File.Create(e.Args[1]);
+                enc.Save(f);
+                Shutdown();
+            };
+            t.Start();
+        }
+    }
+
+    /// <summary>Beim ersten Start: wo soll die Konfiguration liegen (nur dieser PC, Dropbox, eigener Ordner)?</summary>
+    private static void ErststartAbfragen()
+    {
+        var dropbox = Ort.DropboxOrdner();
+        var dropboxZiel = dropbox == null ? null : Path.Combine(dropbox, "Appmaster");
+        var optionen = new List<string> { "Nur auf diesem PC" };
+        if (dropboxZiel != null) optionen.Add("In der Dropbox (gemeinsam mit anderen PCs)");
+        optionen.Add("In einem anderen Ordner");
+
+        var f = new Formular(null, "Willkommen bei Appmaster");
+        var wahl = f.Auswahl("Wo soll Appmaster seine Einstellungen speichern?", optionen, optionen[dropboxZiel != null ? 1 : 0]);
+        var eigener = f.Pfad("Ordner (nur bei „anderer Ordner“)", "", ordner: true,
+            hinweis: "Apps, Rechner und Ressourcen stehen in config.json in diesem Ordner. Zugangsschlüssel der Agenten bleiben aus Sicherheitsgründen immer lokal auf diesem PC. " +
+                     "Alles lässt sich später unter „Einstellungen“ ändern.");
+        if (!f.Zeigen(() => Formular.Gewaehlt<string>(wahl) == optionen[^1] && string.IsNullOrWhiteSpace(eigener.Text) ? "Bitte einen Ordner wählen." : null))
+        {
+            Ort.Setzen(Ort.LokalerOrdner);
+            return;
+        }
+        var gewaehlt = Formular.Gewaehlt<string>(wahl);
+        var ziel = gewaehlt == optionen[0] ? Ort.LokalerOrdner
+                 : gewaehlt == optionen[^1] ? eigener.Text.Trim()
+                 : dropboxZiel!;
+        try { Directory.CreateDirectory(ziel); Ort.Setzen(ziel); }
+        catch { Ort.Setzen(Ort.LokalerOrdner); }
+    }
+
+    /// <summary>ICO mit PNG-Bildern (16–256 px), wie es ab Windows Vista üblich ist.</summary>
+    private static void IcoSchreiben(string ziel)
+    {
+        int[] groessen = [16, 24, 32, 48, 64, 128, 256];
+        var bilder = groessen.Select(g =>
+        {
+            var enc = new PngBitmapEncoder();
+            enc.Frames.Add(BitmapFrame.Create(AppLogo.Rendern(g)));
+            using var ms = new MemoryStream();
+            enc.Save(ms);
+            return ms.ToArray();
+        }).ToList();
+
+        using var w = new BinaryWriter(File.Create(ziel));
+        w.Write((short)0); w.Write((short)1); w.Write((short)bilder.Count);
+        int offset = 6 + 16 * bilder.Count;
+        for (int i = 0; i < bilder.Count; i++)
+        {
+            int g = groessen[i];
+            w.Write((byte)(g >= 256 ? 0 : g)); w.Write((byte)(g >= 256 ? 0 : g));
+            w.Write((byte)0); w.Write((byte)0); w.Write((short)1); w.Write((short)32);
+            w.Write(bilder[i].Length); w.Write(offset);
+            offset += bilder[i].Length;
+        }
+        foreach (var b in bilder) w.Write(b);
+    }
+}

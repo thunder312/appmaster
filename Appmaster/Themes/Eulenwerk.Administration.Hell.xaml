@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Eulenwerk Akzent hell: Administration. Wird zusammen mit Eulenwerk.Hell.xaml eingehängt. -->
+  <Color x:Key="EwAccentColor">#0E9BB0</Color>
+  <SolidColorBrush x:Key="EwAccent" Color="{StaticResource EwAccentColor}" />
+  <Color x:Key="EwAccentHoverColor">#0C8799</Color>
+  <SolidColorBrush x:Key="EwAccentHover" Color="{StaticResource EwAccentHoverColor}" />
+  <Color x:Key="EwAccentSoftColor">#D9F3F7</Color>
+  <SolidColorBrush x:Key="EwAccentSoft" Color="{StaticResource EwAccentSoftColor}" />
+  <Color x:Key="EwAccentLightColor">#0A6C7B</Color>
+  <SolidColorBrush x:Key="EwAccentLight" Color="{StaticResource EwAccentLightColor}" />
+  <Color x:Key="EwTextOnAccentColor">#04181C</Color>
+  <SolidColorBrush x:Key="EwTextOnAccent" Color="{StaticResource EwTextOnAccentColor}" />
+</ResourceDictionary>

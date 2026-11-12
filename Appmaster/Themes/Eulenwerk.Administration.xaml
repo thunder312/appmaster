@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Eulenwerk Akzent: Administration. Vor Eulenwerk.Theme.xaml einbinden. -->
+  <Color x:Key="EwAccentColor">#2BC4D9</Color>
+  <SolidColorBrush x:Key="EwAccent" Color="{StaticResource EwAccentColor}" />
+  <Color x:Key="EwAccentHoverColor">#20AEC2</Color>
+  <SolidColorBrush x:Key="EwAccentHover" Color="{StaticResource EwAccentHoverColor}" />
+  <Color x:Key="EwAccentSoftColor">#12343B</Color>
+  <SolidColorBrush x:Key="EwAccentSoft" Color="{StaticResource EwAccentSoftColor}" />
+  <Color x:Key="EwAccentLightColor">#7FDDEA</Color>
+  <SolidColorBrush x:Key="EwAccentLight" Color="{StaticResource EwAccentLightColor}" />
+  <FontFamily x:Key="EwFontHeading">Segoe UI</FontFamily>
+  <sys:String xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="EwCategoryName">Administration</sys:String>
+</ResourceDictionary>

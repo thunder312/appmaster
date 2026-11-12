@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UseWPF>true</UseWPF>
+        <RootNamespace>Appmaster</RootNamespace>
+        <AssemblyName>Appmaster</AssemblyName>
+        <Version>0.1.0</Version>
+    </PropertyGroup>
+
+    <!-- Agent-Dateien mitliefern, damit „Agent installieren …“ den Ordner neben der .exe findet -->
+    <ItemGroup>
+        <None Include="..\agent\**\*" Link="agent\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <PropertyGroup Condition="Exists('Assets\app.ico')">
+        <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    </PropertyGroup>
+
+</Project>
