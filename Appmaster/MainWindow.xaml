@@ -1,4 +1,4 @@
-﻿<Window x:Class="Appmaster.MainWindow"
+<Window x:Class="Appmaster.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:v="clr-namespace:Appmaster.Views"
@@ -234,6 +234,8 @@
                                             <TextBlock Style="{StaticResource EwMuted}" Margin="0,2,0,0" FontSize="12.5">
                                                 <Run Text="{Binding ZustandText, Mode=OneWay}" />
                                             </TextBlock>
+                                            <TextBlock Text="{Binding Hinweis}" Margin="0,4,0,0" FontSize="12.5" Foreground="{DynamicResource EwWarn}"
+                                                       Visibility="{Binding HatHinweis, Converter={StaticResource BoolZuSichtbar}}" />
                                             <!-- Messwerte vom Agent -->
                                             <Grid Margin="0,10,0,0" Visibility="{Binding HatMessdaten, Converter={StaticResource BoolZuSichtbar}}">
                                                 <Grid.ColumnDefinitions>

@@ -128,6 +128,7 @@ public sealed class Steuerzentrale
         if (v.Zustand == RechnerZustand.Startet && !online) return;   // wacht gerade auf
         v.Zustand = online ? RechnerZustand.Online : RechnerZustand.Offline;
         v.Daten = daten;
+        v.Hinweis = daten == null ? AgentClient.Hinweis(v.Modell) : "";
     }
 
     private void NutzerAktualisieren()

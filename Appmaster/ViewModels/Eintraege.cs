@@ -120,6 +120,15 @@ public sealed class RechnerVm : Beobachtbar
 
     public string Meldung { get => _meldung; set => Setze(ref _meldung, value); }
 
+    private string _hinweis = "";
+    /// <summary>Warum der Agent keine Daten liefert (z. B. Tunnel-Fehler); leer, wenn alles in Ordnung ist.</summary>
+    public string Hinweis
+    {
+        get => _hinweis;
+        set { if (Setze(ref _hinweis, value)) Melden(nameof(HatHinweis)); }
+    }
+    public bool HatHinweis => _hinweis.Length > 0;
+
     public bool Beschaeftigt
     {
         get => _beschaeftigt;

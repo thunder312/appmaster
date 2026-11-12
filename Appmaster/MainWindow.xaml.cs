@@ -336,6 +336,7 @@ public partial class MainWindow : Window
             if (mac.Text.Trim().Length > 0 && !WakeOnLan.MacGueltig(mac.Text)) return "Die MAC-Adresse ist ungültig (Beispiel: aa:bb:cc:dd:ee:ff).";
             if (tunnel.IsChecked == true)
             {
+                if (Formular.Gewaehlt<AgentArt>(art) != AgentArt.LinuxAgent) return "Der SSH-Tunnel funktioniert nur mit „Appmaster-Agent (Linux)“. Bitte oben „Überwachung / Steuerung“ entsprechend wählen.";
                 if (string.IsNullOrWhiteSpace(tZiel.Text)) return "Bitte das SSH-Ziel für den Tunnel eintragen (z. B. root@82.165.153.177).";
                 if (!int.TryParse(tLokal.Text, out var lp) || lp is < 1024 or > 65535) return "Der lokale Tunnel-Port muss zwischen 1024 und 65535 liegen.";
                 if (!int.TryParse(tServer.Text, out var sp) || sp is < 1 or > 65535) return "Der Agent-Port auf dem Server ist ungültig.";

@@ -97,6 +97,19 @@ public static class AgentClient
         return req;
     }
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Fehlergruende = new();
+
+    /// <summary>Warum der Agent keine Daten liefert (Tunnel-Fehler, falscher Token, nicht erreichbar), oder leer.</summary>
+    public static string Hinweis(Rechner r)
+    {
+        if (!Eingerichtet(r)) return "";
+        var teile = new List<string>();
+        var tunnel = SshTunnel.Fehler(r.Id);
+        if (tunnel.Length > 0) teile.Add("Tunnel: " + tunnel);
+        if (Fehlergruende.TryGetValue(r.Id, out var f) && f.Length > 0) teile.Add(f);
+        return string.Join(" · ", teile);
+    }
+
     public static bool Eingerichtet(Rechner r) => r.AgentArt != AgentArt.Keiner && SshTunnel.AgentUrl(r).Length > 0;
 
     public static async Task<AgentStatus?> StatusAsync(Rechner r, CancellationToken ct = default)
@@ -106,10 +119,24 @@ public static class AgentClient
         {
             await SshTunnel.SicherstellenAsync(r);
             using var resp = await Http.SendAsync(Anfrage(r, HttpMethod.Get, "/status"), ct);
-            if (!resp.IsSuccessStatusCode) return null;
-            return JsonSerializer.Deserialize<AgentStatus>(await resp.Content.ReadAsStringAsync(ct));
+            if (!resp.IsSuccessStatusCode)
+            {
+                Fehlergruende[r.Id] = (int)resp.StatusCode == 401 || (int)resp.StatusCode == 403
+                    ? "Agent lehnt den Token ab (HTTP " + (int)resp.StatusCode + ") – Token prüfen"
+                    : "Agent antwortet mit HTTP " + (int)resp.StatusCode;
+                return null;
+            }
+            var daten = JsonSerializer.Deserialize<AgentStatus>(await resp.Content.ReadAsStringAsync(ct));
+            Fehlergruende[r.Id] = "";
+            return daten;
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            Fehlergruende[r.Id] = ex is TaskCanceledException ? "Agent antwortet nicht (Zeitüberschreitung)"
+                                : ex.InnerException?.Message is { Length: > 0 } m ? "Agent nicht erreichbar: " + m
+                                : "Agent nicht erreichbar: " + ex.Message;
+            return null;
+        }
     }
 
     private static async Task<(bool Ok, string Meldung)> PostAsync(Rechner r, string pfad)
