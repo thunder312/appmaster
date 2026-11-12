@@ -14,8 +14,8 @@ public static class Dlg
         var w = new Window
         {
             Title = titel, Width = breite, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
-            ShowInTaskbar = false, Owner = besitzer,
-            WindowStartupLocation = besitzer != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen,
+            ShowInTaskbar = false, Owner = besitzer is { IsVisible: true } ? besitzer : null,
+            WindowStartupLocation = besitzer is { IsVisible: true } ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen,
             Style = (Style)Application.Current.FindResource("EwWindow"),
         };
         if (besitzer?.Icon != null) w.Icon = besitzer.Icon;

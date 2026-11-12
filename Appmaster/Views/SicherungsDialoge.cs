@@ -39,10 +39,10 @@ public static class SicherungsDialoge
         try
         {
             var datei = Sicherung.Exportieren(k, pw.Password);
-            Dlg.Hinweis(f.Fenster, "Sicherung gespeichert",
+            Dlg.Hinweis(besitzer, "Sicherung gespeichert",
                 $"{datei}\n\nAb jetzt hält Appmaster die Datei bei jeder Änderung automatisch aktuell. Das Passwort ist dafür geschützt (Windows-Benutzerkonto) auf diesem PC hinterlegt.");
         }
-        catch (Exception ex) { Dlg.Hinweis(f.Fenster, "Sicherung fehlgeschlagen", ex.Message); }
+        catch (Exception ex) { Dlg.Hinweis(besitzer, "Sicherung fehlgeschlagen", ex.Message); }
     }
 
     public static void Importieren(Window? besitzer)
@@ -62,14 +62,14 @@ public static class SicherungsDialoge
 
         var k = inhalt.Konfiguration;
         var wann = inhalt.Erstellt is { } t ? $" vom {t:dd.MM.yyyy HH:mm}" : "";
-        var antwort = Dlg.Frage(f.Fenster, "Konfiguration wiederherstellen?",
+        var antwort = Dlg.Frage(besitzer, "Konfiguration wiederherstellen?",
             $"Die Sicherung{wann} enthält {k.Rechner.Count} Rechner, {k.Ressourcen.Count} Ressourcen und {k.Apps.Count} Apps.\n\n" +
             "Die aktuelle Konfiguration wird ersetzt (eine Kopie bleibt als config.json.bak-… im Konfigurationsordner), danach startet Appmaster neu. " +
             "Rechner, Ressourcen und Apps, die nicht erreichbar sind, werden trotzdem angelegt. Prüfe sie danach und passe sie an oder lösche sie, wenn es sie nicht mehr gibt.",
             "Wiederherstellen", "Abbrechen");
         if (antwort != 0) return;
         try { Sicherung.Wiederherstellen(inhalt, pw.Password); }
-        catch (Exception ex) { Dlg.Hinweis(f.Fenster, "Wiederherstellen fehlgeschlagen", ex.Message); return; }
+        catch (Exception ex) { Dlg.Hinweis(besitzer, "Wiederherstellen fehlgeschlagen", ex.Message); return; }
         Neustart();
     }
 

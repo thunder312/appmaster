@@ -118,6 +118,8 @@ public static class KonfigStore
             }
         }
         catch { /* Pfad wird automatisch gesucht */ }
+
+        try { Sicherung.BeimStart(k); } catch { /* Sicherung ist optional */ }
         return k;
     }
 

@@ -216,6 +216,15 @@ public static class Sicherung
         }
     }
 
+    /// <summary>
+    /// Beim Start: ist die Automatik aktiv, aber die Sicherungsdatei fehlt (gelöscht, nie synchronisiert), wird sie mit dem
+    /// gespeicherten Passwort neu geschrieben. Eine vorhandene Datei wird beim Start nie angefasst.
+    /// </summary>
+    public static void BeimStart(Konfiguration k)
+    {
+        if (!DateiVorhanden && Aktiv) Aktualisieren(k);
+    }
+
     /// <summary>Beim Beenden: wartet kurz, bis eine laufende Aktualisierung fertig ist.</summary>
     public static void Abschliessen()
     {
