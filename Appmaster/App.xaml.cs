@@ -25,6 +25,18 @@ public partial class App : Application
             return;
         }
 
+        // Entwicklerhilfe: "Appmaster.exe --docker-test <ziel.txt>" schreibt gefundenen Docker-Desktop-Pfad und Engine-Zustand und beendet sich.
+        if (e.Args.Length == 2 && e.Args[0] == "--docker-test")
+        {
+            var test = new Models.Rechner { DockerDesktopStarten = true };
+            File.WriteAllText(e.Args[1],
+                $"ExePfad: {DockerDesktop.ExePfad(test) ?? "(nicht gefunden)"}\nEngineLaeuft: {Task.Run(DockerDesktop.EngineLaeuftAsync).GetAwaiter().GetResult()}\n" +
+                $"IstDockerBefehl: {DockerDesktop.IstDockerBefehl("docker start bildki-queue")} {DockerDesktop.IstDockerBefehl("ssh athene docker start x")} " +
+                $"{DockerDesktop.IstDockerBefehl("ollama serve")} {DockerDesktop.IstDockerBefehl("dockerize.exe run")} {DockerDesktop.IstDockerBefehl("cmd /c docker compose up")}\n");
+            Shutdown();
+            return;
+        }
+
         if (Ort.Erststart && e.Args.Length == 0)
         {
             // Der Dialog ist das einzige Fenster – ohne das würde Schließen die App beenden.

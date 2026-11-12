@@ -55,6 +55,10 @@ public sealed class Rechner
     /// <summary>Port des Agents auf dem Server (Standard 8765).</summary>
     public int TunnelServerPort { get; set; } = 8765;
     /// <summary>Privater Schlüssel (OpenSSH-Format, keine .ppk). Pfade sind je PC verschieden, daher nur lokal gespeichert.</summary>
+    /// <summary>Nur für „dieser PC“: Docker Desktop vor Docker-Befehlen starten, falls die Engine nicht läuft.</summary>
+    public bool DockerDesktopStarten { get; set; }
+    /// <summary>Pfad der „Docker Desktop.exe“ (leer = automatisch suchen). Je PC verschieden, daher nur lokal gespeichert.</summary>
+    [JsonIgnore] public string DockerDesktopPfad { get; set; } = "";
     [JsonIgnore] public string TunnelSchluessel { get; set; } = "";
     [JsonIgnore] public bool IstLokal => string.IsNullOrWhiteSpace(Adresse);
 }

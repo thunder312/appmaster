@@ -236,6 +236,8 @@
                                             </TextBlock>
                                             <TextBlock Text="{Binding Hinweis}" Margin="0,4,0,0" FontSize="12.5" Foreground="{DynamicResource EwWarn}"
                                                        Visibility="{Binding HatHinweis, Converter={StaticResource BoolZuSichtbar}}" />
+                                            <TextBlock Text="{Binding Meldung}" Margin="0,4,0,0" FontSize="12.5" Foreground="{DynamicResource EwAccentLight}"
+                                                       Visibility="{Binding HatMeldung, Converter={StaticResource BoolZuSichtbar}}" />
                                             <!-- Messwerte vom Agent -->
                                             <Grid Margin="0,10,0,0" Visibility="{Binding HatMessdaten, Converter={StaticResource BoolZuSichtbar}}">
                                                 <Grid.ColumnDefinitions>

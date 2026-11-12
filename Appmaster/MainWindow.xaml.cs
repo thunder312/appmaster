@@ -322,6 +322,10 @@ public partial class MainWindow : Window
         });
         var url = f.Text("Agent-Adresse", r.AgentUrl, "Linux: http://athene:8765 · Webhosting: https://deine-seite.de/appmaster/status.php");
         var token = f.Text("Agent-Token", r.AgentToken, "Wird nur auf diesem PC gespeichert, nicht in der (Dropbox-)Konfiguration.");
+        var docker = f.Haken("Docker Desktop bei Bedarf starten (nur dieser PC)", r.DockerDesktopStarten,
+            "Läuft die Docker-Engine nicht, startet Appmaster Docker Desktop vor einem Docker-Befehl (z. B. docker start …) und wartet, bis sie bereit ist. Nur wirksam, wenn die Adresse leer ist.");
+        var dockerPfad = f.Pfad("Docker Desktop.exe (optional)", r.DockerDesktopPfad, ordner: false,
+            hinweis: "Leer = automatisch suchen (über docker.exe bzw. C:\\Program Files\\Docker). Wird nur auf diesem PC gespeichert.", filter: "Docker Desktop|Docker Desktop.exe|Programme|*.exe");
         var tunnel = f.Haken("Agent über SSH-Tunnel erreichen", r.TunnelAktiv,
             "Für Server im Internet: Der Agent lauscht dort nur auf 127.0.0.1 (install.sh --bind 127.0.0.1). Appmaster baut den Tunnel selbst auf und beendet ihn beim Schließen. Die Agent-Adresse oben wird dann ignoriert.");
         var tZiel = f.Text("Tunnel: SSH-Ziel", r.TunnelZiel, "z. B. root@82.165.153.177 oder ein Name aus ~/.ssh/config");
@@ -354,6 +358,8 @@ public partial class MainWindow : Window
         r.AgentArt = Formular.Gewaehlt<AgentArt>(art);
         r.AgentUrl = url.Text.Trim();
         r.AgentToken = token.Text.Trim();
+        r.DockerDesktopStarten = docker.IsChecked == true;
+        r.DockerDesktopPfad = dockerPfad.Text.Trim();
         r.TunnelAktiv = tunnel.IsChecked == true;
         r.TunnelZiel = tZiel.Text.Trim();
         r.TunnelSchluessel = tSchl.Text.Trim();

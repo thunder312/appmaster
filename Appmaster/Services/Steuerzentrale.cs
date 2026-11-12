@@ -214,6 +214,12 @@ public sealed class Steuerzentrale
             var v = RechnerVon(r.Modell);
             return v == null ? (false, "Rechner nicht gefunden.") : await AgentClient.DockerAsync(v.Modell, r.Modell.AgentContainer, "start");
         }
+        if (DockerDesktop.IstDockerBefehl(r.Modell.StartBefehl) && RechnerVon(r.Modell) is { } rv)
+        {
+            var (dockerOk, dockerMeldung) = await DockerDesktop.SicherstellenAsync(rv.Modell, s => rv.Meldung = s);
+            rv.Meldung = "";
+            if (!dockerOk) return (false, dockerMeldung);
+        }
         var (code, ausgabe) = await BefehlsLauf.AusfuehrenAsync(r.Modell.StartBefehl);
         return (code == 0, $"Der Startbefehl endete mit Code {code}.\n\n{ausgabe}");
     }

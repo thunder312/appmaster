@@ -118,7 +118,9 @@ public sealed class RechnerVm : Beobachtbar
         RechnerZustand.Startet => "Wird aufgeweckt …", _ => "Unbekannt",
     };
 
-    public string Meldung { get => _meldung; set => Setze(ref _meldung, value); }
+    /// <summary>Kurzer Fortschrittstext, z. B. „Docker Desktop wird gestartet …“.</summary>
+    public string Meldung { get => _meldung; set { if (Setze(ref _meldung, value)) Melden(nameof(HatMeldung)); } }
+    public bool HatMeldung => _meldung.Length > 0;
 
     private string _hinweis = "";
     /// <summary>Warum der Agent keine Daten liefert (z. B. Tunnel-Fehler); leer, wenn alles in Ordnung ist.</summary>
