@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using EulenwerkCI;
@@ -89,6 +90,62 @@ public sealed class Formular
         _fenster.MinHeight = 380;
     }
 
+    public Window Fenster => _fenster;
+
+    /// <summary>Entwicklerhilfe: ist APPMASTER_FOTO auf einen Ordner gesetzt, speichert jedes Formular nach dem Zeichnen ein PNG von sich.</summary>
+    private static void FotoWennGewuenscht(Window w)
+    {
+        var ordner = Environment.GetEnvironmentVariable("APPMASTER_FOTO");
+        if (string.IsNullOrEmpty(ordner)) return;
+        w.ContentRendered += (_, _) =>
+        {
+            var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.2) };
+            t.Tick += (_, _) =>
+            {
+                t.Stop();
+                try
+                {
+                    var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap((int)w.ActualWidth, (int)w.ActualHeight, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                    var grund = new System.Windows.Media.DrawingVisual();
+                    using (var dc = grund.RenderOpen()) dc.DrawRectangle(w.Background, null, new Rect(0, 0, w.ActualWidth, w.ActualHeight));
+                    bmp.Render(grund);
+                    bmp.Render((System.Windows.Media.Visual)w.Content);
+                    var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                    enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bmp));
+                    Directory.CreateDirectory(ordner);
+                    using var f = File.Create(Path.Combine(ordner, w.Title.Replace(' ', '_') + ".png"));
+                    enc.Save(f);
+                }
+                catch { /* nur Entwicklerhilfe */ }
+            };
+            t.Start();
+        };
+    }
+
+    public PasswordBox Passwort(string beschriftung, string? hinweis = null)
+    {
+        var p = new PasswordBox();
+        Zeile(beschriftung, p, hinweis);
+        return p;
+    }
+
+    /// <summary>Reiner Informationstext (Beschriftung + Text).</summary>
+    public TextBlock Info(string beschriftung, string text)
+    {
+        var t = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Style = Stil("EwMuted"), FontSize = 12.5 };
+        Zeile(beschriftung, t);
+        return t;
+    }
+
+    /// <summary>Knopf, der eine Aktion ausführt (z. B. ein weiteres Fenster öffnet), ohne das Formular zu schließen.</summary>
+    public Button Knopf(string text, Action aktion, string? hinweis = null)
+    {
+        var b = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Left };
+        b.Click += (_, _) => aktion();
+        Zeile("", b, hinweis);
+        return b;
+    }
+
     private static Style Stil(string key) => (Style)Application.Current.FindResource(key);
 
     private void Zeile(string beschriftung, UIElement feld, string? hinweis = null)
@@ -170,10 +227,10 @@ public sealed class Formular
     }
 
     /// <summary>Zeigt das Fenster; true = Speichern, false = Abbrechen. <paramref name="pruefen"/> darf einen Fehlertext liefern.</summary>
-    public bool Zeigen(Func<string?>? pruefen = null)
+    public bool Zeigen(Func<string?>? pruefen = null, string bestaetigen = "Speichern")
     {
         bool ok = false;
-        var speichern = new Button { Content = "Speichern", Style = Stil("EwButtonPrimary"), IsDefault = true };
+        var speichern = new Button { Content = bestaetigen, Style = Stil("EwButtonPrimary"), IsDefault = true };
         var abbrechen = new Button { Content = "Abbrechen", Margin = new Thickness(8, 0, 0, 0), IsCancel = true };
         var fehler = new TextBlock { Foreground = (System.Windows.Media.Brush)Application.Current.FindResource("EwDanger"), Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
         speichern.Click += (_, _) =>
@@ -197,6 +254,7 @@ public sealed class Formular
         wurzel.Children.Add(fuss);
         wurzel.Children.Add(scroll);
         _fenster.Content = wurzel;
+        FotoWennGewuenscht(_fenster);
         _fenster.ShowDialog();
         return ok;
     }

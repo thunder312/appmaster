@@ -90,6 +90,11 @@ public partial class MainWindow : Window
         var ort = f.Pfad("Speicherort der Konfiguration", Ort.Ordner, ordner: true,
             hinweis: (dropbox != null ? $"Tipp: {System.IO.Path.Combine(dropbox, "Appmaster")} (Dropbox) teilt die Einstellungen zwischen deinen PCs. " : "") +
                      "Zugangsschlüssel der Agenten bleiben immer lokal auf diesem PC. Wirksam nach Neustart.");
+        f.Info("Verschlüsselte Sicherung der Konfiguration", SicherungsDialoge.Status());
+        f.Knopf(Sicherung.Aktiv ? "Sicherung neu erstellen / Passwort ändern …" : "Sicherung exportieren …",
+            () => SicherungsDialoge.Exportieren(f.Fenster, _z.Konfig));
+        f.Knopf("Konfiguration aus Sicherung importieren …", () => SicherungsDialoge.Importieren(f.Fenster),
+            "Für eine Neuinstallation oder einen neuen PC: stellt Rechner, Ressourcen, Apps und Zugangsdaten wieder her. Appmaster startet danach neu.");
         if (!f.Zeigen(() => int.TryParse(takt.Text, out var t) && t >= 2 ? null : "Prüfintervall: eine Zahl ab 2.")) return;
 
         _z.Konfig.Einstellungen.BeimSchliessen = Formular.Gewaehlt<SchliessenAktion>(schliessen);

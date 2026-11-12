@@ -37,6 +37,13 @@ public partial class App : Application
             return;
         }
 
+        if (e.Args.Length == 2 && e.Args[0] == "--sicherung-test")
+        {
+            File.WriteAllText(e.Args[1], Task.Run(SicherungSelbsttest.Ausfuehren).GetAwaiter().GetResult());
+            Shutdown();
+            return;
+        }
+
         if (Ort.Erststart && e.Args.Length == 0)
         {
             // Der Dialog ist das einzige Fenster – ohne das würde Schließen die App beenden.
@@ -75,6 +82,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         SshTunnel.AlleBeenden();
+        Sicherung.Abschliessen();
         base.OnExit(e);
     }
 
@@ -92,7 +100,20 @@ public partial class App : Application
         var eigener = f.Pfad("Ordner (nur bei „anderer Ordner“)", "", ordner: true,
             hinweis: "Apps, Rechner und Ressourcen stehen in config.json in diesem Ordner. Zugangsschlüssel der Agenten bleiben aus Sicherheitsgründen immer lokal auf diesem PC. " +
                      "Alles lässt sich später unter „Einstellungen“ ändern.");
-        if (!f.Zeigen(() => Formular.Gewaehlt<string>(wahl) == optionen[^1] && string.IsNullOrWhiteSpace(eigener.Text) ? "Bitte einen Ordner wählen." : null))
+        var vorschlag = dropboxZiel != null && File.Exists(Path.Combine(dropboxZiel, Sicherung.DateiName)) ? Path.Combine(dropboxZiel, Sicherung.DateiName) : "";
+        var sicherung = f.Pfad("Sicherungsdatei zum Wiederherstellen (optional)", vorschlag, ordner: false, filter: SicherungsDialoge.Filter,
+            hinweis: "Appmaster neu installiert? Wähle die Datei appmaster-sicherung.enc, um Rechner, Ressourcen, Apps und Zugangsdaten wiederherzustellen. " +
+                     "Leer lassen für eine neue, leere Konfiguration.");
+        var sicherungPw = f.Passwort("Passwort der Sicherung (nur zum Wiederherstellen)");
+        SicherungsInhalt? wiederherstellen = null;
+        if (!f.Zeigen(() =>
+        {
+            if (Formular.Gewaehlt<string>(wahl) == optionen[^1] && string.IsNullOrWhiteSpace(eigener.Text)) return "Bitte einen Ordner wählen.";
+            if (string.IsNullOrWhiteSpace(sicherung.Text)) return null;
+            if (!File.Exists(sicherung.Text.Trim())) return "Die Sicherungsdatei existiert nicht.";
+            try { wiederherstellen = Sicherung.Lesen(sicherung.Text.Trim(), sicherungPw.Password); return null; }
+            catch (Exception ex) { return ex.Message; }
+        }, "Weiter"))
         {
             Ort.Setzen(Ort.LokalerOrdner);
             return;
@@ -103,6 +124,12 @@ public partial class App : Application
                  : dropboxZiel!;
         try { Directory.CreateDirectory(ziel); Ort.Setzen(ziel); }
         catch { Ort.Setzen(Ort.LokalerOrdner); }
+
+        if (wiederherstellen != null)
+        {
+            try { Sicherung.Wiederherstellen(wiederherstellen, sicherungPw.Password); }
+            catch (Exception ex) { Dlg.Hinweis(null, "Wiederherstellen fehlgeschlagen", ex.Message); }
+        }
     }
 
     /// <summary>ICO mit PNG-Bildern (16–256 px), wie es ab Windows Vista üblich ist.</summary>

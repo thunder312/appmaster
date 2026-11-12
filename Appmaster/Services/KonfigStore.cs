@@ -11,8 +11,10 @@ namespace Appmaster.Services;
 /// </summary>
 public static class Ort
 {
-    public static string LokalerOrdner => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Eulenwerk", "Appmaster");
+    /// <summary>%APPDATA%\Eulenwerk\Appmaster (für Selbsttests per Umgebungsvariable APPMASTER_LOKAL umlenkbar).</summary>
+    public static string LokalerOrdner => Environment.GetEnvironmentVariable("APPMASTER_LOKAL") is { Length: > 0 } umgelenkt
+        ? umgelenkt
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Eulenwerk", "Appmaster");
 
     private static string Zeiger => Path.Combine(LokalerOrdner, "ort.txt");
 
@@ -59,7 +61,7 @@ public static class Ort
 /// <summary>Lädt/speichert die Konfiguration als config.json im gewählten Ordner. Agent-Tokens bleiben lokal.</summary>
 public static class KonfigStore
 {
-    private static readonly JsonSerializerOptions Optionen = new()
+    internal static readonly JsonSerializerOptions JsonOptionen = new()
     {
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter() },
@@ -80,7 +82,7 @@ public static class KonfigStore
         try
         {
             if (File.Exists(Datei))
-                k = JsonSerializer.Deserialize<Konfiguration>(File.ReadAllText(Datei), Optionen) ?? k;
+                k = JsonSerializer.Deserialize<Konfiguration>(File.ReadAllText(Datei), JsonOptionen) ?? k;
         }
         catch { /* defekte Datei: leer starten, die alte bleibt bis zum nächsten Speichern liegen */ }
 
@@ -123,15 +125,18 @@ public static class KonfigStore
     {
         Directory.CreateDirectory(Ort.Ordner);
         var tmp = Datei + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(k, Optionen));
+        File.WriteAllText(tmp, JsonSerializer.Serialize(k, JsonOptionen));
         File.Move(tmp, Datei, overwrite: true);
 
         Directory.CreateDirectory(Ort.LokalerOrdner);
         var tokens = k.Rechner.Where(r => r.AgentToken.Length > 0).ToDictionary(r => r.Id, r => r.AgentToken);
-        File.WriteAllText(TokenDatei, JsonSerializer.Serialize(tokens, Optionen));
+        File.WriteAllText(TokenDatei, JsonSerializer.Serialize(tokens, JsonOptionen));
         var keys = k.Rechner.Where(r => r.TunnelSchluessel.Length > 0).ToDictionary(r => r.Id, r => r.TunnelSchluessel);
-        File.WriteAllText(SchluesselDatei, JsonSerializer.Serialize(keys, Optionen));
+        File.WriteAllText(SchluesselDatei, JsonSerializer.Serialize(keys, JsonOptionen));
         var pfade = k.Rechner.Where(r => r.DockerDesktopPfad.Length > 0).ToDictionary(r => r.Id, r => r.DockerDesktopPfad);
-        File.WriteAllText(DockerPfadDatei, JsonSerializer.Serialize(pfade, Optionen));
+        File.WriteAllText(DockerPfadDatei, JsonSerializer.Serialize(pfade, JsonOptionen));
+
+        // Verschlüsselte Gesamtsicherung nachziehen (nur wenn der Benutzer sie eingerichtet hat)
+        try { Sicherung.Aktualisieren(k); } catch { /* Sicherung darf das Speichern nie verhindern */ }
     }
 }
