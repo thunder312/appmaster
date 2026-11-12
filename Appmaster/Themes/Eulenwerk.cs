@@ -92,10 +92,16 @@ public static class Eulenwerk
         };
         if (!string.IsNullOrEmpty(quellcodeUrl)) daniel.Add(("Quellcode", quellcodeUrl));
 
-        var zeile = new StackPanel { Orientation = Orientation.Horizontal };
-        zeile.Children.Add(Karte("DE", Pinsel("Accent"), Pinsel("Bg"), "Daniel Ertl", "Idee & Entwicklung", daniel, 12));
-        zeile.Children.Add(Karte("AI", Pinsel("SurfaceHover"), Pinsel("AccentLight"), "Claude", "KI-Assistent beim Programmieren",
-            [("claude.ai", ClaudeUrl)], 0));
+        // Zwei gleich breite Spalten: Karten passen sich der Fensterbreite an, lange Texte brechen um statt abgeschnitten zu werden.
+        var zeile = new Grid();
+        zeile.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        zeile.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var k1 = Karte("DE", Pinsel("Accent"), Pinsel("Bg"), "Daniel Ertl", "Idee & Entwicklung", daniel, 12);
+        var k2 = Karte("AI", Pinsel("SurfaceHover"), Pinsel("AccentLight"), "Claude", "KI-Assistent beim Programmieren",
+            [("claude.ai", ClaudeUrl)], 0);
+        Grid.SetColumn(k2, 1);
+        zeile.Children.Add(k1);
+        zeile.Children.Add(k2);
         return zeile;
     }
 
@@ -171,14 +177,15 @@ public static class Eulenwerk
             if (ziel != null) tb.Inlines.Add(Link(text, ziel)); else tb.Inlines.Add(new Run(text) { Foreground = Pinsel("Text") });
             sp.Children.Add(tb);
         }
-        var inhalt = new StackPanel { Orientation = Orientation.Horizontal };
+        var inhalt = new DockPanel();
+        DockPanel.SetDock(avatar, Dock.Left);
         inhalt.Children.Add(avatar);
         inhalt.Children.Add(sp);
         return new Border
         {
             Background = Pinsel("SurfaceHover"), BorderBrush = Pinsel("Border"), BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(10), Padding = new Thickness(14, 12, 18, 12), Margin = new Thickness(0, 0, rechterRand, 0),
-            MinWidth = 240, Child = inhalt,
+            CornerRadius = new CornerRadius(10), Padding = new Thickness(14, 12, 14, 12), Margin = new Thickness(0, 0, rechterRand, 0),
+            Child = inhalt,
         };
     }
 }
