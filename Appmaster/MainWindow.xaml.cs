@@ -21,6 +21,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Icon = AppLogo.Rendern(64);
+        KartenBreiteAnpassen();
+        SizeChanged += (_, _) => KartenBreiteAnpassen();
         EulenwerkTheme.TitelleisteAnpassen(this);
 
         // Eulenwerk-Apps zuerst, dann nach Name; Gruppenüberschriften „Eulenwerk-Apps“ / „Weitere Apps“
@@ -49,6 +51,14 @@ public partial class MainWindow : Window
 
         ThemaIconAktualisieren();
         EulenwerkTheme.Geaendert += _ => ThemaIconAktualisieren();
+    }
+
+    /// <summary>Apps und Ressourcen stehen als Kartenraster: drei Spalten, bei schmalen Fenstern zwei oder eine.</summary>
+    private void KartenBreiteAnpassen()
+    {
+        double verfuegbar = Math.Max(300, ActualWidth - 16 /* Fensterrahmen */ - 48 /* Seitenrand */ - 22 /* Scrollbalken */);
+        int spalten = verfuegbar >= 840 ? 3 : verfuegbar >= 520 ? 2 : 1;
+        Resources["KartenBreite"] = Math.Floor((verfuegbar - spalten * 12) / spalten);
     }
 
     // ---------------------------------------------------------------- Kopf

@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:v="clr-namespace:Appmaster.Views"
-        Title="Appmaster" Width="1000" Height="680" MinWidth="760" MinHeight="460"
+        Title="Appmaster" Width="1100" Height="680" MinWidth="760" MinHeight="460"
         Style="{StaticResource EwWindow}" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <!-- Navigation im Kopf: aktiver Reiter mit Akzentlinie -->
@@ -57,6 +57,26 @@
             <Setter Property="MinHeight" Value="32" />
             <Setter Property="Padding" Value="14,0" />
             <Setter Property="Margin" Value="8,0,0,0" />
+        </Style>
+
+        <!-- Kompakte Knöpfe für die Karten im Raster -->
+        <Style x:Key="Mini" TargetType="Button" BasedOn="{StaticResource EwButtonGhost}">
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="5,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,4,6" />
+        </Style>
+        <Style x:Key="MiniHaupt" TargetType="Button" BasedOn="{StaticResource EwButtonPrimary}">
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,4,6" />
+        </Style>
+        <Style x:Key="MiniGefahr" TargetType="Button" BasedOn="{StaticResource EwButtonDanger}">
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="8,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,4,6" />
         </Style>
 
         <!-- Sonne/Mond (Lucide, Strich 1,75) -->
@@ -122,9 +142,13 @@
                                 </GroupStyle.HeaderTemplate>
                             </GroupStyle>
                         </ItemsControl.GroupStyle>
+                        <!-- Karten innerhalb jeder Gruppe nebeneinander -->
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,0,0,10" Padding="0">
+                                <Border Width="{DynamicResource KartenBreite}" MinHeight="168" Margin="0,0,12,12" Padding="0">
                                     <Border.Style>
                                         <!-- Eulenwerk-Apps: Rahmen in der Kategoriefarbe -->
                                         <Style TargetType="Border" BasedOn="{StaticResource EwCard}">
@@ -138,45 +162,48 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="5" />
-                                            <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <!-- Kategoriefarbe als Streifen -->
                                         <Border Background="{Binding KategoriePinsel}" CornerRadius="14,0,0,14" />
-                                        <!-- App-Logo im Design-System-Stil: dunkle Kachel (rx 12), nur bei Eulenwerk-Apps -->
-                                        <Border Grid.Column="1" Width="48" Height="48" CornerRadius="12" Background="#1B1F20" Margin="18,0,0,0" VerticalAlignment="Center"
-                                                Visibility="{Binding IstEulenwerk, Converter={StaticResource BoolZuSichtbar}}">
-                                            <Grid>
-                                                <TextBlock Text="{Binding Initial}" FontSize="22" FontWeight="SemiBold" Foreground="{Binding KategoriePinsel}"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding HatSymbol}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                                <Image Source="{Binding Symbol}" Margin="4" RenderOptions.BitmapScalingMode="HighQuality" />
-                                            </Grid>
-                                        </Border>
-                                        <StackPanel Grid.Column="2" Margin="18,14" VerticalAlignment="Center">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" />
-                                                <Border CornerRadius="9" Padding="8,1" Margin="10,2,0,0" BorderThickness="1" BorderBrush="{Binding KategoriePinsel}" VerticalAlignment="Center"
+                                        <StackPanel Grid.Column="1" Margin="14,12,14,6">
+                                            <DockPanel>
+                                                <!-- App-Logo im Design-System-Stil: dunkle Kachel (rx 12), nur bei Eulenwerk-Apps -->
+                                                <Border DockPanel.Dock="Left" Width="44" Height="44" CornerRadius="11" Background="#1B1F20" Margin="0,0,12,0" VerticalAlignment="Center"
                                                         Visibility="{Binding IstEulenwerk, Converter={StaticResource BoolZuSichtbar}}">
-                                                    <TextBlock Text="Eulenwerk" FontSize="11" FontWeight="SemiBold" Foreground="{Binding KategoriePinsel}" />
+                                                    <Grid>
+                                                        <TextBlock Text="{Binding Initial}" FontSize="20" FontWeight="SemiBold" Foreground="{Binding KategoriePinsel}"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding HatSymbol}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                        <Image Source="{Binding Symbol}" Margin="4" RenderOptions.BitmapScalingMode="HighQuality" />
+                                                    </Grid>
                                                 </Border>
-                                                <TextBlock Foreground="{DynamicResource EwTextFaint}" Margin="10,3,0,0" FontSize="12.5">
-                                                    <Run Text="{Binding KategorieName, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding TypText, Mode=OneWay}" />
-                                                </TextBlock>
-                                            </StackPanel>
-                                            <TextBlock Text="{Binding Beschreibung}" Style="{StaticResource EwMuted}" Margin="0,2,0,0" />
-                                            <TextBlock Margin="0,6,0,0" FontSize="12.5" Foreground="{DynamicResource EwTextMuted}">
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                                    <WrapPanel Margin="0,2,0,0">
+                                                        <Border CornerRadius="9" Padding="7,0" Margin="0,0,8,0" BorderThickness="1" BorderBrush="{Binding KategoriePinsel}" VerticalAlignment="Center"
+                                                                Visibility="{Binding IstEulenwerk, Converter={StaticResource BoolZuSichtbar}}">
+                                                            <TextBlock Text="Eulenwerk" FontSize="11" FontWeight="SemiBold" Foreground="{Binding KategoriePinsel}" />
+                                                        </Border>
+                                                        <TextBlock Foreground="{DynamicResource EwTextFaint}" FontSize="12">
+                                                            <Run Text="{Binding KategorieName, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding TypText, Mode=OneWay}" />
+                                                        </TextBlock>
+                                                    </WrapPanel>
+                                                </StackPanel>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Beschreibung}" Style="{StaticResource EwMuted}" FontSize="12.5" Margin="0,8,0,0" TextWrapping="Wrap"
+                                                       TextTrimming="CharacterEllipsis" MaxHeight="36" ToolTip="{Binding Beschreibung}" />
+                                            <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource EwTextMuted}" TextTrimming="CharacterEllipsis" ToolTip="{Binding RessourcenText}">
                                                 <Run Text="Braucht: " /><Run Text="{Binding RessourcenText, Mode=OneWay}" />
                                             </TextBlock>
-                                            <TextBlock Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource EwTextFaint}">
+                                            <TextBlock Margin="0,2,0,0" FontSize="12" Foreground="{DynamicResource EwTextFaint}" TextTrimming="CharacterEllipsis">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -187,30 +214,38 @@
                                                 </TextBlock.Style>
                                                 <Run Text="{Binding RechnerText, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding VersionText, Mode=OneWay}" />
                                             </TextBlock>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-                                            <TextBlock Text="{Binding StatusAnzeige}" Foreground="{DynamicResource EwAccentLight}" FontWeight="Medium" VerticalAlignment="Center" Margin="0,0,8,0" />
-                                            <Button Content="Starten" IsEnabled="{Binding KannStarten}" Click="AppStart_Click">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource KleinHaupt}">
+                                            <TextBlock Text="{Binding StatusAnzeige}" Foreground="{DynamicResource EwAccentLight}" FontWeight="Medium" FontSize="12.5" Margin="0,6,0,0" TextTrimming="CharacterEllipsis">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Laeuft}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                                            <DataTrigger Binding="{Binding StatusAnzeige}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </Button.Style>
-                                            </Button>
-                                            <Button Content="Beenden" IsEnabled="{Binding KannBeenden}" Click="AppEnde_Click">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource KleinGefahr}">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Laeuft}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                            </Button>
-                                            <Button Content="Bearbeiten" Style="{StaticResource Klein}" Click="AppBearbeiten_Click" />
-                                            <Button Content="Entfernen" Style="{StaticResource Klein}" Click="AppEntfernen_Click" />
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <WrapPanel Margin="0,10,0,0">
+                                                <Button Content="Starten" IsEnabled="{Binding KannStarten}" Click="AppStart_Click">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource MiniHaupt}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Laeuft}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                                <Button Content="Beenden" IsEnabled="{Binding KannBeenden}" Click="AppEnde_Click">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource MiniGefahr}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Laeuft}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                                <Button Content="Bearbeiten" Style="{StaticResource Mini}" Click="AppBearbeiten_Click" />
+                                                <Button Content="Entfernen" Style="{StaticResource Mini}" Click="AppEntfernen_Click" />
+                                            </WrapPanel>
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -229,34 +264,30 @@
                     <TextBlock x:Name="LeerRessourcen" Style="{StaticResource EwMuted}" Margin="0,0,0,12" Visibility="Collapsed"
                                Text="Noch keine Ressourcen. Lege zuerst einen Rechner an, dann hier die Dienste darauf." />
                     <ItemsControl x:Name="ListeRessourcen">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource EwCard}" Margin="0,0,0,10" Padding="18,14">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Ellipse Style="{StaticResource Punkt}" Margin="0,0,14,0" />
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding RechnerName}" Foreground="{DynamicResource EwTextFaint}" Margin="10,2,0,0" FontSize="12.5" />
-                                            </StackPanel>
-                                            <TextBlock Style="{StaticResource EwMuted}" Margin="0,2,0,0" FontSize="12.5">
-                                                <Run Text="{Binding ZustandText, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding NutzerText, Mode=OneWay}" />
-                                            </TextBlock>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Button Content="Starten" Style="{StaticResource KleinHaupt}" IsEnabled="{Binding KannStarten}" Click="RessStart_Click"
+                                <Border Style="{StaticResource EwCard}" Width="{DynamicResource KartenBreite}" MinHeight="120" Margin="0,0,12,12" Padding="14,12,14,6">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Ellipse DockPanel.Dock="Left" Style="{StaticResource Punkt}" Margin="0,0,10,0" />
+                                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding RechnerName}" Foreground="{DynamicResource EwTextFaint}" Margin="20,2,0,0" FontSize="12" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Style="{StaticResource EwMuted}" Margin="0,6,0,0" FontSize="12.5" TextWrapping="Wrap">
+                                            <Run Text="{Binding ZustandText, Mode=OneWay}" /><Run Text=" · " /><Run Text="{Binding NutzerText, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <WrapPanel Margin="0,10,0,0">
+                                            <Button Content="Starten" Style="{StaticResource MiniHaupt}" IsEnabled="{Binding KannStarten}" Click="RessStart_Click"
                                                     Visibility="{Binding KannSteuern, Converter={StaticResource BoolZuSichtbar}}" />
-                                            <Button Content="Stoppen" Style="{StaticResource Klein}" IsEnabled="{Binding KannStoppen}" Click="RessStopp_Click"
+                                            <Button Content="Stoppen" Style="{StaticResource Mini}" IsEnabled="{Binding KannStoppen}" Click="RessStopp_Click"
                                                     Visibility="{Binding KannSteuern, Converter={StaticResource BoolZuSichtbar}}" />
-                                            <Button Content="Bearbeiten" Style="{StaticResource Klein}" Click="RessBearbeiten_Click" />
-                                            <Button Content="Entfernen" Style="{StaticResource Klein}" Click="RessEntfernen_Click" />
-                                        </StackPanel>
-                                    </Grid>
+                                            <Button Content="Bearbeiten" Style="{StaticResource Mini}" Click="RessBearbeiten_Click" />
+                                            <Button Content="Entfernen" Style="{StaticResource Mini}" Click="RessEntfernen_Click" />
+                                        </WrapPanel>
+                                    </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
