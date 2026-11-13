@@ -54,6 +54,14 @@ Das **Symbol** ist das Programmsymbol der .exe bzw. `apple-touch-icon` / `icon.p
 Eine gleichnamige oder gleich geprüfte Ressource wird wiederverwendet, nichts doppelt angelegt. `container` steuert über den Agent des Rechners,
 alternativ `startBefehl` / `stopBefehl`. Windows-Apps legen die Datei neben die .exe (oder als `<name>.eulenwerk.json`), Web-Apps liefern sie unter `/eulenwerk.json`.
 
+### KI-Dienste auf GPU-Rechnern automatisch finden
+
+Rechner der Kategorie **GPU-Rechner** durchsucht Appmaster nach KI-Diensten und legt sie als **Ressourcen** an (Konfliktgruppe „GPU <Rechner>“):
+**Ollama** (`/api/tags`, Port 11434), **sd-server** / stable-diffusion.cpp (`/sdcpp/v1/capabilities`, Ports 7860–7879, 8000–8010, 8080–8090, mit Modellname)
+und Docker-Container mit KI-Namen (sd, flux, pony, ollama, comfy, whisper …), auch gestoppte – dafür muss der Agent (ab 0.2.0) auf dem Rechner laufen.
+Container-Dienste lassen sich dann über den Agent starten und stoppen. Vorhandene Ressourcen (gleicher Port, Name oder Container auf demselben Rechner)
+werden nicht doppelt angelegt oder geändert. Auf diesem PC werden nur laufende Dienste erkannt und nur überwacht.
+
 ### Apps starten und beenden
 
 - **Lokale Apps** (Programm, Skript, `.bat`, Verknüpfung) und **Web-Apps** (Adresse im Browser, optional mit lokalem Startbefehl).

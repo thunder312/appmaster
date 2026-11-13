@@ -8,7 +8,7 @@
         <UseWPF>true</UseWPF>
         <RootNamespace>Appmaster</RootNamespace>
         <AssemblyName>Appmaster</AssemblyName>
-        <Version>0.2.0</Version>
+        <Version>0.3.0</Version>
     </PropertyGroup>
 
     <!-- Agent-Dateien mitliefern, damit „Agent installieren …“ den Ordner neben der .exe findet -->

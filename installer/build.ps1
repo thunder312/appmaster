@@ -5,7 +5,7 @@
   Voraussetzung: dotnet tool install --global wix --version 5.0.2
 #>
 [CmdletBinding()]
-param([string]$Version = "0.2.0", [switch]$Installieren)
+param([string]$Version = "0.3.0", [switch]$Installieren)
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 # Publish-Ordner außerhalb der Dropbox (Dropbox sperrt sonst einzelne Dateien)

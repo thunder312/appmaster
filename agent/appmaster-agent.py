@@ -25,7 +25,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 TOKEN = os.environ.get("APPMASTER_TOKEN", "")
 PORT = int(os.environ.get("APPMASTER_PORT", "8765"))
 BIND = os.environ.get("APPMASTER_BIND", "0.0.0.0")
@@ -136,6 +136,27 @@ def _platten():
     return ergebnis
 
 
+def _gebundene_ports(namen):
+    """Veröffentlichte Host-Ports (auch gestoppter) Container laut Docker-Konfiguration: {name: [ports]}."""
+    ergebnis = {}
+    if not namen:
+        return ergebnis
+    try:
+        aus = subprocess.run(["docker", "inspect", "--format", "{{.Name}}	{{json .HostConfig.PortBindings}}"] + list(namen),
+                             capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return ergebnis
+    for zeile in aus.strip().splitlines():
+        name, _, roh = zeile.partition("	")
+        try:
+            bindungen = json.loads(roh) or {}
+        except ValueError:
+            continue
+        ports = {int(b["HostPort"]) for liste in bindungen.values() for b in (liste or []) if str(b.get("HostPort", "")).isdigit()}
+        ergebnis[name.lstrip("/")] = sorted(ports)
+    return ergebnis
+
+
 def _docker():
     if not shutil.which("docker"):
         return []
@@ -151,6 +172,13 @@ def _docker():
             # Veröffentlichte TCP-Ports (z. B. "0.0.0.0:8080->80/tcp"); Appmaster sucht dort nach Eulenwerk-Webanwendungen.
             ports = sorted({int(p) for p in re.findall(r":(\d+)->\d+/tcp", teile[3] if len(teile) > 3 else "")})
             liste.append({"name": teile[0], "state": teile[1], "status": teile[2], "ports": ports})
+    # Gestoppte Container zeigen in "docker ps" keine Ports: aus der Konfiguration nachtragen.
+    gestoppt = [c["name"] for c in liste if not c["ports"]]
+    if gestoppt:
+        bindungen = _gebundene_ports(gestoppt)
+        for c in liste:
+            if not c["ports"]:
+                c["ports"] = bindungen.get(c["name"], [])
     return liste
 
 

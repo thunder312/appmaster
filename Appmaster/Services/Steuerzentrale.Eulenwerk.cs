@@ -43,6 +43,7 @@ public sealed partial class Steuerzentrale
         _sucht = true;
         try
         {
+            await KiDiensteSuchenAsync();   // zuerst: Apps können die gefundenen KI-Ressourcen gleich nutzen
             var ziele = Rechner
                 .Where(v => v.Modell.Kategorien.HasFlag(RechnerKategorie.Arbeitsrechner) || v.Modell.Kategorien.HasFlag(RechnerKategorie.Webserver))
                 .Select(v => new SuchRechner(v.Modell.Id, v.Name, v.Modell.Adresse.Trim(), v.Modell.IstLokal, v.Modell.Kategorien,
@@ -58,6 +59,53 @@ public sealed partial class Steuerzentrale
         }
         catch { return 0; }
         finally { _sucht = false; }
+    }
+
+    private static int PortVon(string url) => Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var u) ? u.Port : -1;
+
+    /// <summary>
+    /// GPU-Rechner haben vermutlich KI-Dienste: Ollama, sd-server und KI-Container werden gesucht und als Ressourcen angelegt
+    /// (Konfliktgruppe „GPU &lt;Rechner&gt;“; Container-Dienste über den Agent steuerbar). Vorhandene Ressourcen bleiben unangetastet.
+    /// </summary>
+    private async Task KiDiensteSuchenAsync()
+    {
+        bool geaendert = false;
+        foreach (var v in Rechner.Where(x => x.Modell.IstGpu).ToList())
+        {
+            var m = v.Modell;
+            var container = v.Daten?.Container ?? new List<ContainerInfo>();
+            var ziel = new SuchRechner(m.Id, v.Name, m.Adresse.Trim(), m.IstLokal, m.Kategorien, new List<int>());
+            List<KiFund> funde;
+            try { funde = await KiSuche.SuchenAsync(ziel, container); }
+            catch { continue; }
+
+            foreach (var f in funde)
+            {
+                bool vorhanden = Ressourcen.Any(r => r.Modell.RechnerId == m.Id &&
+                    (PortVon(r.Modell.PruefUrl) == f.Port || string.Equals(r.Name, f.Name, StringComparison.OrdinalIgnoreCase)
+                     || (f.Container != null && string.Equals(r.Modell.AgentContainer, f.Container, StringComparison.OrdinalIgnoreCase))));
+                if (vorhanden) continue;
+
+                var res = new Ressource
+                {
+                    Name = f.Name, Beschreibung = f.Beschreibung, RechnerId = m.Id, PruefUrl = f.PruefUrl,
+                    IstKi = true, Automatisch = true, Konfliktgruppe = "GPU " + v.Name,
+                };
+                if (f.Container != null && m.AgentArt == AgentArt.LinuxAgent)
+                {
+                    res.Steuerung = Steuerung.Agent;
+                    res.AgentContainer = f.Container;
+                }
+                Ressourcen.Add(new RessourceVm(res));
+                geaendert = true;
+            }
+        }
+        if (geaendert)
+        {
+            AlleNeuBeschriften();
+            Speichern();
+            _ = ZustandAktualisierenAsync();
+        }
     }
 
     private static bool Gleich(string? a, string? b) => string.Equals(a?.Trim().TrimEnd('/'), b?.Trim().TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
@@ -150,7 +198,9 @@ public sealed partial class Steuerzentrale
             var host = ziel.Modell.IstLokal ? "localhost" : ziel.Modell.Adresse.Trim();
             var pruef = mr.PruefUrl.Replace("{host}", host, StringComparison.OrdinalIgnoreCase).Trim();
 
-            var res = Ressourcen.FirstOrDefault(r => (pruef.Length > 0 && Gleich(r.Modell.PruefUrl, pruef)) || string.Equals(r.Name, mr.Name.Trim(), StringComparison.OrdinalIgnoreCase));
+            var res = Ressourcen.FirstOrDefault(r => (pruef.Length > 0 && Gleich(r.Modell.PruefUrl, pruef))
+                                                     || (r.Modell.RechnerId == ziel.Modell.Id && (string.Equals(r.Name, mr.Name.Trim(), StringComparison.OrdinalIgnoreCase)
+                                                         || (pruef.Length > 0 && PortVon(r.Modell.PruefUrl) == PortVon(pruef) && PortVon(pruef) > 0))));
             if (res == null)
             {
                 var neu = new Ressource

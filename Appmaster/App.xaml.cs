@@ -10,7 +10,7 @@ namespace Appmaster;
 public partial class App : Application
 {
     public const string Name = "Appmaster";
-    public const string Version = "0.2.0";
+    public const string Version = "0.3.0";
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -47,6 +47,16 @@ public partial class App : Application
                 $"{f.Typ} | {f.Name} | {f.Kategorie} | v{f.Version} | {f.Start}{f.Url} | symbol={(f.Symbol?.Length ?? 0)} | ressourcen={f.Manifest?.Ressourcen.Count ?? 0} | {f.Beschreibung}")) + $"\n({funde.Count} Funde)\n");
             for (int i = 0; i < funde.Count; i++)
                 if (funde[i].Symbol is { } png) File.WriteAllBytes($"{e.Args[1]}.{i}.png", png);   // Symbole zur Sichtprüfung
+            Shutdown();
+            return;
+        }
+
+        // Entwicklerhilfe: "Appmaster.exe --ki-test <ziel.txt> <host>" sucht KI-Dienste (Ollama, sd-server) auf dem Rechner.
+        if (e.Args.Length == 3 && e.Args[0] == "--ki-test")
+        {
+            var r = new SuchRechner("t", "Test", e.Args[2] == "localhost" ? "" : e.Args[2], e.Args[2] == "localhost", Models.RechnerKategorie.GpuRechner, new List<int>());
+            var funde = Task.Run(() => KiSuche.SuchenAsync(r, new List<ContainerInfo>())).GetAwaiter().GetResult();
+            File.WriteAllText(e.Args[1], string.Join(Environment.NewLine, funde.Select(f => $"{f.Name} | {f.PruefUrl} | läuft={f.Laeuft} | {f.Beschreibung}")) + $"{Environment.NewLine}({funde.Count} Funde)");
             Shutdown();
             return;
         }
