@@ -48,9 +48,10 @@ public sealed class ManifestRessource
 }
 
 /// <summary>Was die Suche über einen Rechner wissen muss (Momentaufnahme, damit sie ohne Oberfläche laufen kann).</summary>
-public sealed record SuchRechner(string Id, string Name, string Adresse, bool IstLokal, RechnerKategorie Kategorien, IReadOnlyList<int> Ports)
+public sealed record SuchRechner(string Id, string Name, string Adresse, bool IstLokal, RechnerKategorie Kategorien, IReadOnlyList<int> Ports, IReadOnlyList<string>? Hosts = null)
 {
-    public string Host => IstLokal ? "localhost" : Adresse;
+    /// <summary>Hostname bzw. IP ohne Schema, Port und Pfad (auch wenn „http://…“ eingetragen wurde).</summary>
+    public string Host => IstLokal ? "localhost" : Adresse.Contains("://") && Uri.TryCreate(Adresse, UriKind.Absolute, out var u) ? u.Host : Adresse.Trim().Trim('/');
 }
 
 /// <summary>Eine gefundene Eulenwerk-App.</summary>
@@ -331,15 +332,16 @@ public static class EulenwerkSuche
         if (r.Host.Length == 0) return new();
         var kandidaten = new List<string>();
         foreach (var port in r.Ports.Distinct()) kandidaten.Add($"http://{r.Host}:{port}/");
-        var https = $"https://{r.Host}/";
-        var http = $"http://{r.Host}/";
-        kandidaten.Add(https);
-        kandidaten.Add(http);
+        // Hostname-basierte Webseiten (nginx/Apache-Domains, vom Agent gemeldet) zusätzlich zur Adresse des Rechners
+        var hosts = new List<string> { r.Host };
+        hosts.AddRange((r.Hosts ?? Array.Empty<string>()).Where(h => !string.Equals(h, r.Host, StringComparison.OrdinalIgnoreCase)));
+        foreach (var h in hosts) { kandidaten.Add($"https://{h}/"); kandidaten.Add($"http://{h}/"); }
 
         var ergebnisse = await Task.WhenAll(kandidaten.Select(u => WebFund(u, r, ct)));
         var funde = ergebnisse.Where(f => f != null).Select(f => f!).ToList();
         // Dieselbe Seite über http und https: nur https behalten.
-        if (funde.Any(f => f.Url == https)) funde.RemoveAll(f => f.Url == http);
+        foreach (var h in hosts)
+            if (funde.Any(f => f.Url == $"https://{h}/")) funde.RemoveAll(f => f.Url == $"http://{h}/");
         return funde;
     }
 

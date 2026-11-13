@@ -29,22 +29,25 @@ public sealed partial class Steuerzentrale
     }
 
     /// <summary>Nach dem Anlegen oder Ändern eines Rechners: Zustand holen (Container-Ports vom Agent), dann suchen.</summary>
-    public async Task NachRechnerAenderungAsync()
+    public async Task NachRechnerAenderungAsync(bool manuell = false)
     {
         await ZustandAktualisierenAsync();
-        await EulenwerkSuchenAsync();
+        await EulenwerkSuchenAsync(manuell);
     }
 
-    public async Task<int> EulenwerkSuchenAsync()
+    /// <param name="manuell">Auf Knopfdruck: auch zuvor entfernte Apps werden wieder zugelassen.</param>
+    public async Task<int> EulenwerkSuchenAsync(bool manuell = false)
     {
         if (_sucht) return 0;
+        if (manuell && Konfig.AbgelehnteAutoApps.Count > 0) { Konfig.AbgelehnteAutoApps.Clear(); Speichern(); }
         _sucht = true;
         try
         {
             var ziele = Rechner
                 .Where(v => v.Modell.Kategorien.HasFlag(RechnerKategorie.Arbeitsrechner) || v.Modell.Kategorien.HasFlag(RechnerKategorie.Webserver))
                 .Select(v => new SuchRechner(v.Modell.Id, v.Name, v.Modell.Adresse.Trim(), v.Modell.IstLokal, v.Modell.Kategorien,
-                    v.Daten?.Container?.Where(c => c.Zustand == "running").SelectMany(c => c.Ports ?? new List<int>()).ToList() ?? new List<int>()))
+                    v.Daten?.Container?.Where(c => c.Zustand == "running").SelectMany(c => c.Ports ?? new List<int>()).ToList() ?? new List<int>(),
+                    v.Daten?.WebHosts ?? new List<string>()))
                 .ToList();
             if (ziele.Count == 0) return 0;
 

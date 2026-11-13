@@ -182,7 +182,7 @@ public partial class MainWindow : Window
         SucheKnopf.IsEnabled = false;
         SucheStatus.Text = "Suche läuft …";
         SucheStatus.Visibility = Visibility.Visible;
-        try { await _z.NachRechnerAenderungAsync(); }
+        try { await _z.NachRechnerAenderungAsync(manuell: true); }
         finally { SucheKnopf.IsEnabled = true; }
     }
 

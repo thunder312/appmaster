@@ -80,6 +80,8 @@ public sealed class AgentStatus
     [JsonPropertyName("gpus")] public List<GpuInfo>? Gpus { get; set; }
     [JsonPropertyName("disks")] public List<DiskInfo>? Platten { get; set; }
     [JsonPropertyName("docker")] public List<ContainerInfo>? Container { get; set; }
+    /// <summary>Domainnamen aus der nginx-/Apache-Konfiguration des Servers (ab Agent 0.2.0).</summary>
+    [JsonPropertyName("web_hosts")] public List<string>? WebHosts { get; set; }
     [JsonPropertyName("power_allowed")] public bool KannHerunterfahren { get; set; }
     [JsonPropertyName("read_only")] public bool NurLesen { get; set; }
 }

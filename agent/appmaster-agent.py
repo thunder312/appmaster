@@ -154,6 +154,24 @@ def _docker():
     return liste
 
 
+def _web_hosts():
+    """Domainnamen aus nginx-/Apache-Konfigurationen des Servers (Appmaster sucht dort nach Eulenwerk-Webanwendungen)."""
+    hosts = set()
+    muster = ("/etc/nginx/sites-enabled/*", "/etc/nginx/conf.d/*.conf", "/etc/apache2/sites-enabled/*")
+    dom = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}$")
+    for m in muster:
+        for pfad in glob.glob(m):
+            try:
+                with open(pfad, encoding="utf-8", errors="ignore") as f:
+                    text = f.read()
+            except OSError:
+                continue
+            namen = [n for z in re.findall(r"^\s*server_name\s+([^;]+);", text, re.M) for n in z.split()]
+            namen += re.findall(r"^\s*ServerName\s+(\S+)", text, re.M | re.I)
+            hosts.update(n.lower() for n in namen if dom.match(n))
+    return sorted(hosts)
+
+
 def status():
     gesamt, belegt = _ram()
     try:
@@ -165,7 +183,7 @@ def status():
         "dienst": "appmaster-agent", "version": VERSION, "host": socket.gethostname(),
         "cpu_percent": _cpu["percent"], "load": last,
         "mem_total_mb": gesamt, "mem_used_mb": belegt, "uptime_s": float(up),
-        "temps": _temps(), "gpus": _gpus(), "disks": _platten(), "docker": _docker(),
+        "temps": _temps(), "gpus": _gpus(), "disks": _platten(), "docker": _docker(), "web_hosts": _web_hosts(),
         "power_allowed": ALLOW_POWER, "read_only": False,
     }
 
