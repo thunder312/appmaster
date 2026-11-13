@@ -16,10 +16,12 @@ public partial class MainWindow : Window
 {
     private readonly Steuerzentrale _z = new();
     private readonly ICollectionView _appsAnsicht;
+    private readonly ICollectionView _ressAnsicht;
 
     public MainWindow()
     {
         InitializeComponent();
+        FensterlageLaden();
         Icon = AppLogo.Rendern(64);
         KartenBreiteAnpassen();
         SizeChanged += (_, _) => KartenBreiteAnpassen();
@@ -31,7 +33,26 @@ public partial class MainWindow : Window
         _appsAnsicht.SortDescriptions.Add(new SortDescription(nameof(AppVm.GruppeRang), ListSortDirection.Ascending));
         _appsAnsicht.SortDescriptions.Add(new SortDescription(nameof(AppVm.Name), ListSortDirection.Ascending));
         ListeApps.ItemsSource = _appsAnsicht;
-        ListeRessourcen.ItemsSource = _z.Ressourcen;
+        // Ressourcen alphabetisch, nach Rechner getrennt (live: Umbenennen/Hinzufügen sortiert sofort um)
+        _ressAnsicht = CollectionViewSource.GetDefaultView(_z.Ressourcen);
+        _ressAnsicht.GroupDescriptions.Add(new PropertyGroupDescription(nameof(RessourceVm.RechnerName)));
+        _ressAnsicht.SortDescriptions.Add(new SortDescription(nameof(RessourceVm.RechnerName), ListSortDirection.Ascending));
+        _ressAnsicht.SortDescriptions.Add(new SortDescription(nameof(RessourceVm.Name), ListSortDirection.Ascending));
+        if (_ressAnsicht is ICollectionViewLiveShaping live)
+        {
+            if (live.CanChangeLiveSorting)
+            {
+                live.LiveSortingProperties.Add(nameof(RessourceVm.RechnerName));
+                live.LiveSortingProperties.Add(nameof(RessourceVm.Name));
+                live.IsLiveSorting = true;
+            }
+            if (live.CanChangeLiveGrouping)
+            {
+                live.LiveGroupingProperties.Add(nameof(RessourceVm.RechnerName));
+                live.IsLiveGrouping = true;
+            }
+        }
+        ListeRessourcen.ItemsSource = _ressAnsicht;
         ListeRechner.ItemsSource = _z.Rechner;
         _z.SucheBeendet += SucheBeendet;
         _z.Apps.CollectionChanged += (_, _) => LeerApps.Visibility = _z.Apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -61,6 +82,53 @@ public partial class MainWindow : Window
         Resources["KartenBreite"] = Math.Floor((verfuegbar - spalten * 12) / spalten);
     }
 
+    // ---------------------------------------------------------------- Fensterlage
+
+    private sealed record Fensterlage(double Links, double Oben, double Breite, double Hoehe, bool Maximiert);
+
+    /// <summary>Gilt nur für den normalen Start; Entwicklerhilfen (--shot, --…-test) lassen die Fensterlage unberührt.</summary>
+    private static bool Fensterlage_Aktiv => Environment.GetCommandLineArgs().Length <= 1;
+
+    private static string FensterDatei => System.IO.Path.Combine(Ort.LokalerOrdner, "fenster.json");
+
+    /// <summary>Standard: maximiert. Danach so, wie der Benutzer das Fenster zuletzt verlassen hat (nur auf diesem PC gemerkt).</summary>
+    private void FensterlageLaden()
+    {
+        if (!Fensterlage_Aktiv) return;
+        WindowState = WindowState.Maximized;   // Standard beim ersten Start
+        try
+        {
+            if (!System.IO.File.Exists(FensterDatei)) return;
+            var l = System.Text.Json.JsonSerializer.Deserialize<Fensterlage>(System.IO.File.ReadAllText(FensterDatei));
+            if (l == null) return;
+
+            // Gespeicherte Lage nur übernehmen, wenn das Fenster auf einem vorhandenen Bildschirm sichtbar wäre (Monitor abgesteckt?)
+            var sichtbar = new Rect(l.Links, l.Oben, l.Breite, l.Hoehe);
+            sichtbar.Intersect(new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
+                SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight));
+            if (l.Breite < MinWidth || l.Hoehe < MinHeight || sichtbar.IsEmpty || sichtbar.Width < 120 || sichtbar.Height < 80) return;   // unbrauchbar: maximiert starten
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Left = l.Links; Top = l.Oben; Width = l.Breite; Height = l.Hoehe;
+            WindowState = l.Maximiert ? WindowState.Maximized : WindowState.Normal;
+        }
+        catch { /* defekte Datei: maximiert starten */ }
+    }
+
+    private void FensterlageSpeichern()
+    {
+        if (!Fensterlage_Aktiv) return;
+        try
+        {
+            // RestoreBounds liefert auch bei maximiertem Fenster die normale Größe, damit „Wiederherstellen“ danach sinnvoll bleibt
+            var b = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+            if (b.IsEmpty || b.Width <= 0 || b.Height <= 0) return;
+            System.IO.Directory.CreateDirectory(Ort.LokalerOrdner);
+            System.IO.File.WriteAllText(FensterDatei, System.Text.Json.JsonSerializer.Serialize(
+                new Fensterlage(b.Left, b.Top, b.Width, b.Height, WindowState == WindowState.Maximized)));
+        }
+        catch { /* Fensterlage ist nur Komfort */ }
+    }
+
     // ---------------------------------------------------------------- Kopf
 
     private void ThemaIconAktualisieren() =>
@@ -75,6 +143,7 @@ public partial class MainWindow : Window
     /// <summary>Läuft noch eine App, fragt Appmaster: Standard ist „Laufen lassen“.</summary>
     private async void Fenster_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        FensterlageSpeichern();
         if (_beendeNun || !_z.LaufendeApps) return;
         var aktion = _z.Konfig.Einstellungen.BeimSchliessen;
         if (aktion == SchliessenAktion.Fragen)

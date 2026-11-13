@@ -10,7 +10,7 @@ namespace Appmaster;
 public partial class App : Application
 {
     public const string Name = "Appmaster";
-    public const string Version = "0.5.0";
+    public const string Version = "0.6.0";
 
     protected override void OnStartup(StartupEventArgs e)
     {

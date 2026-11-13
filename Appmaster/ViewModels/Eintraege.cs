@@ -10,7 +10,9 @@ namespace Appmaster.ViewModels;
 public sealed class RessourceVm : Beobachtbar
 {
     public Ressource Modell { get; }
-    public string RechnerName { get; set; } = "";
+    private string _rechnerName = "";
+    /// <summary>Name des Rechners, auf dem die Ressource läuft (Gruppenüberschrift im Ressourcen-Tab).</summary>
+    public string RechnerName { get => _rechnerName; set => Setze(ref _rechnerName, value); }
 
     private Zustand _zustand = Zustand.Unbekannt;
     private string _nutzer = "";
