@@ -130,71 +130,164 @@ public static class EulenwerkSuche
 
     // ------------------------------------------------------------------------------------------ Windows-Apps
 
+    private sealed record Kandidat(string Ordner, string? Name, string? Exe, bool Vertraut);
+
     private static List<EulenwerkFund> WindowsAppsSuchen(SuchRechner rechner)
     {
         var funde = new List<EulenwerkFund>();
         var eigene = Environment.ProcessPath;
-        foreach (var ordner in Programmordner())
+        var kandidaten = Kandidaten();
+        var vertraute = kandidaten.Where(k => k.Vertraut).Select(k => k.Ordner).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var gesehen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var k in kandidaten.OrderByDescending(x => x.Vertraut))
         {
-            string[] exes;
-            try { exes = Directory.GetFiles(ordner, "*.exe", SearchOption.TopDirectoryOnly); }
-            catch { continue; }
+            if (!k.Vertraut && vertraute.Contains(k.Ordner)) continue;
+            IEnumerable<string> exes;
+            if (k.Vertraut) exes = HauptExe(k) is { } haupt ? new[] { haupt } : Array.Empty<string>();
+            else
+            {
+                try { exes = Directory.GetFiles(k.Ordner, "*.exe", SearchOption.TopDirectoryOnly); }
+                catch { continue; }
+            }
             foreach (var exe in exes)
             {
                 var datei = Path.GetFileName(exe);
                 if (datei.StartsWith("unins", StringComparison.OrdinalIgnoreCase) || string.Equals(exe, eigene, StringComparison.OrdinalIgnoreCase)) continue;
-                try { if (WindowsFund(exe, rechner.Id) is { } f) funde.Add(f); }
+                if (!gesehen.Add(exe)) continue;
+                try { if (WindowsFund(exe, rechner.Id, k.Name, k.Vertraut) is { } f) funde.Add(f); }
                 catch { /* unlesbare Datei überspringen */ }
             }
         }
         return funde;
     }
 
-    /// <summary>Ordner, in denen Programme liegen können: Installationsorte aus der Registry (Hersteller „Daniel Ertl“) und die üblichen Programmordner.</summary>
-    private static IEnumerable<string> Programmordner()
+    private static string Norm(string? s) => new string((s ?? "").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+
+    private static string[] Programmwurzeln() => new[]
     {
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"),
+        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+    }.Where(x => x.Length > 0 && Directory.Exists(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+    /// <summary>Pfad einer .exe aus einem Registry-Wert wie <c>"C:\...\App.exe",0</c> (nur wenn die Datei existiert).</summary>
+    private static string? ExeAus(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var m = Regex.Match(text.Trim(), "^\"?([^\"]+?\\.exe)", RegexOptions.IgnoreCase);
+        return m.Success && File.Exists(m.Groups[1].Value) ? Path.GetFullPath(m.Groups[1].Value) : null;
+    }
+
+    /// <summary>
+    /// Programmordner, in denen Eulenwerk-Apps liegen können. <b>Vertraut</b> sind Installationen aus der Registry mit Hersteller „Daniel Ertl“
+    /// oder – bei leerem Hersteller (z. B. Electron-Apps) – mit dem Namen eines bekannten Eulenwerk-Projekts.
+    /// </summary>
+    private static List<Kandidat> Kandidaten()
+    {
+        var liste = new List<Kandidat>();
         var gesehen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var wurzeln = Programmwurzeln();
 
         foreach (var hive in new[] { Registry.CurrentUser, Registry.LocalMachine })
         foreach (var pfad in new[] { @"Software\Microsoft\Windows\CurrentVersion\Uninstall", @"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall" })
         {
-            string[] namen;
-            RegistryKey? wurzel = null;
-            try { wurzel = hive.OpenSubKey(pfad); namen = wurzel?.GetSubKeyNames() ?? Array.Empty<string>(); }
-            catch { namen = Array.Empty<string>(); }
-            foreach (var n in namen)
+            try
             {
-                string? ort = null;
-                try
+                using var wurzel = hive.OpenSubKey(pfad);
+                foreach (var n in wurzel?.GetSubKeyNames() ?? Array.Empty<string>())
                 {
                     using var k = wurzel!.OpenSubKey(n);
-                    if (!string.Equals((k?.GetValue("Publisher") as string)?.Trim(), Autor, StringComparison.OrdinalIgnoreCase)) continue;
-                    ort = (k?.GetValue("InstallLocation") as string)?.Trim().Trim('"');
-                    if (string.IsNullOrEmpty(ort) && k?.GetValue("DisplayIcon") is string icon)
-                        ort = Path.GetDirectoryName(icon.Split(',')[0].Trim().Trim('"'));
+                    var anzeige = (k?.GetValue("DisplayName") as string)?.Trim();
+                    if (string.IsNullOrEmpty(anzeige)) continue;
+                    var hersteller = (k!.GetValue("Publisher") as string)?.Trim() ?? "";
+                    var sauber = Regex.Replace(anzeige, @"\s+v?\d+(\.\d+)+$", "");   // „EPUB to Voice 1.0.0“ → „EPUB to Voice“
+                    bool vomAutor = string.Equals(hersteller, Autor, StringComparison.OrdinalIgnoreCase);
+                    if (!vomAutor && !(hersteller.Length == 0 && BekannteKategorie(sauber) != null)) continue;
+
+                    var exe = ExeAus(k.GetValue("DisplayIcon") as string);
+                    var ordner = (k.GetValue("InstallLocation") as string)?.Trim().Trim('"');
+                    if (string.IsNullOrEmpty(ordner) && exe != null) ordner = Path.GetDirectoryName(exe);
+                    if (string.IsNullOrEmpty(ordner) && ExeAus(k.GetValue("UninstallString") as string) is { } uninstall
+                        && !Path.GetFileName(uninstall).StartsWith("msiexec", StringComparison.OrdinalIgnoreCase)) ordner = Path.GetDirectoryName(uninstall);
+                    if (string.IsNullOrEmpty(ordner)) ordner = OrdnerZuName(sauber, wurzeln);
+                    if (string.IsNullOrEmpty(ordner) || !Directory.Exists(ordner)) continue;
+                    ordner = Path.GetFullPath(ordner);
+                    if (gesehen.Add(ordner)) liste.Add(new Kandidat(ordner, sauber, exe, true));
                 }
-                catch { continue; }
-                if (!string.IsNullOrEmpty(ort) && Directory.Exists(ort) && gesehen.Add(Path.GetFullPath(ort))) yield return Path.GetFullPath(ort);
             }
-            wurzel?.Dispose();
+            catch { /* Registry-Zweig nicht lesbar */ }
         }
 
-        var wurzeln = new[]
-        {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"),
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-        };
-        foreach (var w in wurzeln.Where(x => x.Length > 0 && Directory.Exists(x)).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var w in wurzeln)
         {
             string[] unter;
             try { unter = Directory.GetDirectories(w); } catch { continue; }
             foreach (var d in unter)
-                if (gesehen.Add(Path.GetFullPath(d))) yield return Path.GetFullPath(d);
+                if (gesehen.Add(Path.GetFullPath(d))) liste.Add(new Kandidat(Path.GetFullPath(d), null, null, false));
         }
+        return liste;
     }
 
-    private static EulenwerkFund? WindowsFund(string exe, string rechnerId)
+    private static string? OrdnerZuName(string name, IEnumerable<string> wurzeln)
+    {
+        var soll = Norm(name);
+        if (soll.Length < 4) return null;
+        foreach (var w in wurzeln)
+        {
+            string[] unter;
+            try { unter = Directory.GetDirectories(w); } catch { continue; }
+            foreach (var d in unter)
+            {
+                var ist = Norm(Path.GetFileName(d));
+                if (ist.Length >= 4 && (ist == soll || ist.Contains(soll) || soll.Contains(ist))) return d;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>Die Haupt-.exe einer vertrauten Installation: Symbol der Registry, Startmenü-Verknüpfung, Name – sonst die erste „echte“ .exe.</summary>
+    private static string? HauptExe(Kandidat k)
+    {
+        if (k.Exe != null && string.Equals(Path.GetDirectoryName(k.Exe), k.Ordner.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) return k.Exe;
+        string[] exes;
+        try { exes = Directory.GetFiles(k.Ordner, "*.exe", SearchOption.TopDirectoryOnly); } catch { return null; }
+        var echte = exes.Where(e => !Regex.IsMatch(Path.GetFileName(e), "unins|setup|update|test|crash|helper|createdump", RegexOptions.IgnoreCase)).ToList();
+        if (echte.Count == 0) return null;
+        if (k.Name != null)
+        {
+            if (StartmenueZiel(k.Name) is { } ziel && echte.Contains(ziel, StringComparer.OrdinalIgnoreCase)) return ziel;
+            var n = Norm(k.Name);
+            var passend = echte.FirstOrDefault(e => { var x = Norm(Path.GetFileNameWithoutExtension(e)); return x.Length >= 3 && (n.Contains(x) || x.Contains(n)); });
+            if (passend != null) return passend;
+        }
+        return echte.OrderBy(e => e, StringComparer.OrdinalIgnoreCase).First();
+    }
+
+    /// <summary>Ziel der Startmenü-Verknüpfung mit diesem Namen (oder null).</summary>
+    private static string? StartmenueZiel(string name)
+    {
+        try
+        {
+            var typ = Type.GetTypeFromProgID("WScript.Shell");
+            if (typ == null) return null;
+            dynamic shell = Activator.CreateInstance(typ)!;
+            foreach (var wurzel in new[] { Environment.GetFolderPath(Environment.SpecialFolder.Programs), Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms) })
+            {
+                if (!Directory.Exists(wurzel)) continue;
+                foreach (var lnk in Directory.EnumerateFiles(wurzel, "*.lnk", SearchOption.AllDirectories))
+                {
+                    if (Norm(Path.GetFileNameWithoutExtension(lnk)) != Norm(name)) continue;
+                    string ziel = shell.CreateShortcut(lnk).TargetPath;
+                    if (ziel.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && File.Exists(ziel)) return Path.GetFullPath(ziel);
+                }
+            }
+        }
+        catch { /* ohne Startmenü-Hinweis */ }
+        return null;
+    }
+
+    private static EulenwerkFund? WindowsFund(string exe, string rechnerId, string? namensHinweis, bool vertraut)
     {
         var ordner = Path.GetDirectoryName(exe)!;
         var manifest = ManifestLesen(Path.ChangeExtension(exe, ".eulenwerk.json")) ?? ManifestLesen(Path.Combine(ordner, ManifestName));
@@ -211,13 +304,13 @@ public static class EulenwerkSuche
             spuren = DateiSuche(dll, nadeln);
         }
 
-        if (manifest == null && !vomAutor && !spuren.Contains("eulenwerkci")) return null;
+        if (!vertraut && manifest == null && !vomAutor && !spuren.Contains("eulenwerkci")) return null;
 
-        var name = Erster(manifest?.Name, info.ProductName, info.FileDescription, Path.GetFileNameWithoutExtension(exe))!;
-        var beschreibung = Erster(manifest?.Beschreibung, info.Comments, info.FileDescription == name ? null : info.FileDescription) ?? "";
+        var name = Erster(manifest?.Name, namensHinweis, info.ProductName, info.FileDescription, Path.GetFileNameWithoutExtension(exe))!;
+        var beschreibung = Erster(manifest?.Beschreibung, info.Comments, Norm(info.FileDescription) == Norm(name) || Norm(info.FileDescription) == Norm(info.ProductName) || Norm(info.FileDescription) == Norm(Path.GetFileNameWithoutExtension(exe)) ? null : info.FileDescription) ?? "";
         var kat = KategorieLesen(manifest?.Kategorie)
                   ?? Enum.GetValues<Kategorie>().Where(k => spuren.Contains("eulenwerk." + k.ToString().ToLowerInvariant() + ".")).Cast<Kategorie?>().FirstOrDefault()
-                  ?? BekannteKategorie(name, Path.GetFileNameWithoutExtension(exe))
+                  ?? BekannteKategorie(name, namensHinweis, Path.GetFileNameWithoutExtension(exe))
                   ?? Kategorie.Organisation;
         var version = Erster(manifest?.Version, info.ProductVersion?.Split('+')[0], info.FileVersion) ?? "";
 
@@ -335,7 +428,11 @@ public static class EulenwerkSuche
         // Hostname-basierte Webseiten (nginx/Apache-Domains, vom Agent gemeldet) zusätzlich zur Adresse des Rechners
         var hosts = new List<string> { r.Host };
         hosts.AddRange((r.Hosts ?? Array.Empty<string>()).Where(h => !string.Equals(h, r.Host, StringComparison.OrdinalIgnoreCase)));
-        foreach (var h in hosts) { kandidaten.Add($"https://{h}/"); kandidaten.Add($"http://{h}/"); }
+        foreach (var h in hosts)
+        {
+            if (h.Contains("://")) { kandidaten.Add(h.TrimEnd('/') + "/"); continue; }   // vollständige Adresse (z. B. mit Port oder Pfad)
+            kandidaten.Add($"https://{h}/"); kandidaten.Add($"http://{h}/");
+        }
 
         var ergebnisse = await Task.WhenAll(kandidaten.Select(u => WebFund(u, r, ct)));
         var funde = ergebnisse.Where(f => f != null).Select(f => f!).ToList();
@@ -362,10 +459,10 @@ public static class EulenwerkSuche
 
         var kennzeichen = HtmlKennzeichen.Match(html);
         var manifest = await ManifestHolenAsync(basis, ct);
-        if (!kennzeichen.Success && manifest == null) return null;
-
         var titel = TitelRegex.Match(html) is { Success: true } t ? System.Net.WebUtility.HtmlDecode(Regex.Replace(t.Groups[1].Value, @"\s+", " ")).Trim() : "";
         var kurzTitel = Regex.Split(titel, @"\s+[–—|·-]\s+")[0].Trim();
+        // Kennzeichen im HTML, Manifest – oder der Seitentitel nennt ein bekanntes Eulenwerk-Projekt (Apps, die das Design-System noch nicht im HTML kennzeichnen)
+        if (!kennzeichen.Success && manifest == null && BekannteKategorie(kurzTitel) == null) return null;
         var meta = BeschreibungRegex.Match(html) is { Success: true } mm ? Attribut(mm.Value, "content") : null;
         var uri = new Uri(basis);
         var name = Erster(manifest?.Name, kurzTitel, uri.Host)!;

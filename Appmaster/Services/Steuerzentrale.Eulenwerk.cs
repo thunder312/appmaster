@@ -48,7 +48,8 @@ public sealed partial class Steuerzentrale
                 .Where(v => v.Modell.Kategorien.HasFlag(RechnerKategorie.Arbeitsrechner) || v.Modell.Kategorien.HasFlag(RechnerKategorie.Webserver))
                 .Select(v => new SuchRechner(v.Modell.Id, v.Name, v.Modell.Adresse.Trim(), v.Modell.IstLokal, v.Modell.Kategorien,
                     v.Daten?.Container?.Where(c => c.Zustand == "running").SelectMany(c => c.Ports ?? new List<int>()).ToList() ?? new List<int>(),
-                    v.Daten?.WebHosts ?? new List<string>()))
+                    (v.Daten?.WebHosts ?? new List<string>())
+                        .Concat(v.Modell.WeitereWebadressen.Split(new[] { ',', ';', ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)).ToList()))
                 .ToList();
             if (ziele.Count == 0) return 0;
 

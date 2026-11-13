@@ -387,6 +387,8 @@ public partial class MainWindow : Window
             "Wahrscheinlicher Installationsort für Windows-Apps. Appmaster sucht hier automatisch nach Eulenwerk-Apps (derzeit nur auf diesem PC, also bei leerer Adresse).");
         var katWeb = f.Haken("Webserver", r.IstWebserver,
             "Wahrscheinlicher Ort für Web-Anwendungen. Appmaster sucht hier automatisch nach Eulenwerk-Webanwendungen (Port 80/443 und – mit Agent – den Ports der Docker-Container).");
+        var webAdr = f.Text("Weitere Webadressen (nur Webserver)", r.WeitereWebadressen,
+            "Domains oder Adressen dieses Servers, getrennt durch Komma, z. B. geschichten.daniel-ertl.de. Hilft, wenn der Agent die Domains nicht melden kann.");
         var mac = f.Text("MAC-Adresse (Wake-on-LAN)", r.MacAdresse, "aa:bb:cc:dd:ee:ff – nur bei Rechnern im selben Netzwerk, die per Kabel angeschlossen sind. Leer = nicht aufweckbar.");
         var bc = f.Text("Broadcast-Adresse", r.Broadcast, "Meist 255.255.255.255, oder z. B. 192.168.1.255 für das Heimnetz.");
         var art = f.Auswahl("Überwachung / Steuerung", Enum.GetValues<AgentArt>(), r.AgentArt, a => a switch
@@ -428,6 +430,7 @@ public partial class MainWindow : Window
 
         r.Name = name.Text.Trim();
         r.Adresse = adr.Text.Trim();
+        r.WeitereWebadressen = webAdr.Text.Trim();
         r.Kategorien = (katGpu.IsChecked == true ? RechnerKategorie.GpuRechner : 0)
                        | (katArbeit.IsChecked == true ? RechnerKategorie.Arbeitsrechner : 0)
                        | (katWeb.IsChecked == true ? RechnerKategorie.Webserver : 0);

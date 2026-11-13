@@ -57,6 +57,8 @@ public sealed class Rechner
     public AgentArt AgentArt { get; set; } = AgentArt.Keiner;
     /// <summary>Wofür der Rechner gedacht ist (GPU-Rechner, Arbeitsrechner, Webserver – auch mehrere zugleich).</summary>
     public RechnerKategorie Kategorien { get; set; } = RechnerKategorie.Keine;
+    /// <summary>Weitere Webadressen/Domains dieses Servers, in denen Appmaster nach Eulenwerk-Webanwendungen sucht (getrennt durch Komma, Leerzeichen oder Zeilenumbruch).</summary>
+    public string WeitereWebadressen { get; set; } = "";
     /// <summary>z. B. http://athene:8765 (Linux-Agent) oder https://meine-seite.de/appmaster/status.php (PHP).</summary>
     public string AgentUrl { get; set; } = "";
     /// <summary>Wird nur lokal auf diesem PC gespeichert (nie in der Dropbox-Konfiguration), siehe KonfigStore.</summary>
