@@ -25,7 +25,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 TOKEN = os.environ.get("APPMASTER_TOKEN", "")
 PORT = int(os.environ.get("APPMASTER_PORT", "8765"))
 BIND = os.environ.get("APPMASTER_BIND", "0.0.0.0")
@@ -140,7 +140,7 @@ def _docker():
     if not shutil.which("docker"):
         return []
     try:
-        aus = subprocess.run(["docker", "ps", "-a", "--format", "{{.Names}}\t{{.State}}\t{{.Status}}"],
+        aus = subprocess.run(["docker", "ps", "-a", "--format", "{{.Names}}\t{{.State}}\t{{.Status}}\t{{.Ports}}"],
                              capture_output=True, text=True, timeout=10).stdout
     except Exception:
         return []
@@ -148,7 +148,9 @@ def _docker():
     for zeile in aus.strip().splitlines():
         teile = zeile.split("\t")
         if len(teile) >= 3 and (not CONTAINERS or teile[0] in CONTAINERS):
-            liste.append({"name": teile[0], "state": teile[1], "status": teile[2]})
+            # Veröffentlichte TCP-Ports (z. B. "0.0.0.0:8080->80/tcp"); Appmaster sucht dort nach Eulenwerk-Webanwendungen.
+            ports = sorted({int(p) for p in re.findall(r":(\d+)->\d+/tcp", teile[3] if len(teile) > 3 else "")})
+            liste.append({"name": teile[0], "state": teile[1], "status": teile[2], "ports": ports})
     return liste
 
 

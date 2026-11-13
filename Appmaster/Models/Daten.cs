@@ -30,6 +30,19 @@ public enum AgentArt
 
 public enum SchliessenAktion { Fragen, LaufenLassen, Beenden }
 
+/// <summary>Wofür ein Rechner gedacht ist (mehrere möglich). Steuert, wo Appmaster nach Eulenwerk-Apps sucht und wo KI-Dienste bevorzugt liegen.</summary>
+[Flags]
+public enum RechnerKategorie
+{
+    Keine = 0,
+    /// <summary>Bevorzugter Ausführort von KI-Diensten (Ollama, sd-server …).</summary>
+    GpuRechner = 1,
+    /// <summary>Wahrscheinlicher Installationsort für Windows-Apps; Appmaster sucht hier automatisch nach Eulenwerk-Apps.</summary>
+    Arbeitsrechner = 2,
+    /// <summary>Wahrscheinlicher Ort für Web-Anwendungen; Appmaster sucht hier automatisch nach Eulenwerk-Webanwendungen.</summary>
+    Webserver = 4,
+}
+
 /// <summary>Ein Rechner, auf dem Ressourcen laufen (Athene, dieser PC, GPU-PC …).</summary>
 public sealed class Rechner
 {
@@ -42,6 +55,8 @@ public sealed class Rechner
     /// <summary>Ziel des Magic Packets; im Heimnetz meist 255.255.255.255 oder z. B. 192.168.1.255.</summary>
     public string Broadcast { get; set; } = "255.255.255.255";
     public AgentArt AgentArt { get; set; } = AgentArt.Keiner;
+    /// <summary>Wofür der Rechner gedacht ist (GPU-Rechner, Arbeitsrechner, Webserver – auch mehrere zugleich).</summary>
+    public RechnerKategorie Kategorien { get; set; } = RechnerKategorie.Keine;
     /// <summary>z. B. http://athene:8765 (Linux-Agent) oder https://meine-seite.de/appmaster/status.php (PHP).</summary>
     public string AgentUrl { get; set; } = "";
     /// <summary>Wird nur lokal auf diesem PC gespeichert (nie in der Dropbox-Konfiguration), siehe KonfigStore.</summary>
@@ -61,6 +76,9 @@ public sealed class Rechner
     [JsonIgnore] public string DockerDesktopPfad { get; set; } = "";
     [JsonIgnore] public string TunnelSchluessel { get; set; } = "";
     [JsonIgnore] public bool IstLokal => string.IsNullOrWhiteSpace(Adresse);
+    [JsonIgnore] public bool IstGpu => Kategorien.HasFlag(RechnerKategorie.GpuRechner);
+    [JsonIgnore] public bool IstArbeitsrechner => Kategorien.HasFlag(RechnerKategorie.Arbeitsrechner);
+    [JsonIgnore] public bool IstWebserver => Kategorien.HasFlag(RechnerKategorie.Webserver);
 }
 
 /// <summary>Etwas, das Apps brauchen: Ollama, sd-server, Datenbank, Docker-Container …</summary>
@@ -83,6 +101,10 @@ public sealed class Ressource
     public bool AutomatischStoppen { get; set; }
     /// <summary>Sekunden, die Appmaster nach dem Start auf die Erreichbarkeit wartet.</summary>
     public int StartWartezeit { get; set; } = 60;
+    /// <summary>KI-Dienst (Ollama, sd-server …): wird bevorzugt auf einem GPU-Rechner angelegt.</summary>
+    public bool IstKi { get; set; }
+    /// <summary>true = Appmaster hat die Ressource aus einer gefundenen Eulenwerk-App angelegt.</summary>
+    public bool Automatisch { get; set; }
 }
 
 public sealed class AppEintrag
@@ -102,6 +124,14 @@ public sealed class AppEintrag
     public string Datenpfad { get; set; } = "";
     /// <summary>Ressourcen, die vor dem Start laufen müssen.</summary>
     public List<string> RessourcenIds { get; set; } = new();
+    /// <summary>Rechner, auf dem die App installiert ist bzw. läuft (leer = unbekannt).</summary>
+    public string RechnerId { get; set; } = "";
+    /// <summary>Eulenwerk-App (vom Design-System erkennbar); wird im Apps-Tab hervorgehoben.</summary>
+    public bool IstEulenwerk { get; set; }
+    /// <summary>Gefundene Version, falls bekannt.</summary>
+    public string Version { get; set; } = "";
+    /// <summary>Schlüssel, unter dem die automatische Suche diese App wiedererkennt (leer = von Hand angelegt).</summary>
+    public string AutoSchluessel { get; set; } = "";
 }
 
 public sealed class Einstellungen
@@ -117,4 +147,6 @@ public sealed class Konfiguration
     public List<Rechner> Rechner { get; set; } = new();
     public List<Ressource> Ressourcen { get; set; } = new();
     public List<AppEintrag> Apps { get; set; } = new();
+    /// <summary>Automatisch gefundene Apps, die der Benutzer entfernt hat – die Suche legt sie nicht wieder an.</summary>
+    public List<string> AbgelehnteAutoApps { get; set; } = new();
 }

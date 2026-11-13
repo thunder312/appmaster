@@ -37,6 +37,20 @@ public partial class App : Application
             return;
         }
 
+        // Entwicklerhilfe: "Appmaster.exe --suche-test <ziel.txt> [port …]" sucht auf diesem PC (Arbeitsrechner) und auf localhost (Webserver, angegebene Ports).
+        if (e.Args.Length >= 2 && e.Args[0] == "--suche-test")
+        {
+            var ports = e.Args.Skip(2).Select(int.Parse).ToList();
+            var ziel = new List<SuchRechner> { new("t", "Test", "", true, Models.RechnerKategorie.Arbeitsrechner | Models.RechnerKategorie.Webserver, ports) };
+            var funde = Task.Run(() => EulenwerkSuche.SuchenAsync(ziel)).GetAwaiter().GetResult();
+            File.WriteAllText(e.Args[1], string.Join("\n", funde.Select(f =>
+                $"{f.Typ} | {f.Name} | {f.Kategorie} | v{f.Version} | {f.Start}{f.Url} | symbol={(f.Symbol?.Length ?? 0)} | ressourcen={f.Manifest?.Ressourcen.Count ?? 0} | {f.Beschreibung}")) + $"\n({funde.Count} Funde)\n");
+            for (int i = 0; i < funde.Count; i++)
+                if (funde[i].Symbol is { } png) File.WriteAllBytes($"{e.Args[1]}.{i}.png", png);   // Symbole zur Sichtprüfung
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Length == 2 && e.Args[0] == "--sicherung-test")
         {
             File.WriteAllText(e.Args[1], Task.Run(SicherungSelbsttest.Ausfuehren).GetAwaiter().GetResult());

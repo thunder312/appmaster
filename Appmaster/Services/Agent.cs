@@ -63,6 +63,8 @@ public sealed class ContainerInfo
     [JsonPropertyName("name")] public string Name { get; set; } = "";
     [JsonPropertyName("state")] public string Zustand { get; set; } = "";
     [JsonPropertyName("status")] public string Status { get; set; } = "";
+    /// <summary>Veröffentlichte TCP-Ports (ab Agent 0.2.0); dort sucht Appmaster nach Eulenwerk-Webanwendungen.</summary>
+    [JsonPropertyName("ports")] public List<int>? Ports { get; set; }
 }
 
 /// <summary>Messwerte, die der Agent (oder status.php) liefert. Fehlende Felder bleiben null.</summary>

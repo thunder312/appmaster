@@ -1,5 +1,7 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Appmaster.Models;
@@ -13,6 +15,7 @@ namespace Appmaster;
 public partial class MainWindow : Window
 {
     private readonly Steuerzentrale _z = new();
+    private readonly ICollectionView _appsAnsicht;
 
     public MainWindow()
     {
@@ -20,9 +23,15 @@ public partial class MainWindow : Window
         Icon = AppLogo.Rendern(64);
         EulenwerkTheme.TitelleisteAnpassen(this);
 
-        ListeApps.ItemsSource = _z.Apps;
+        // Eulenwerk-Apps zuerst, dann nach Name; Gruppenüberschriften „Eulenwerk-Apps“ / „Weitere Apps“
+        _appsAnsicht = CollectionViewSource.GetDefaultView(_z.Apps);
+        _appsAnsicht.GroupDescriptions.Add(new PropertyGroupDescription(nameof(AppVm.GruppeName)));
+        _appsAnsicht.SortDescriptions.Add(new SortDescription(nameof(AppVm.GruppeRang), ListSortDirection.Ascending));
+        _appsAnsicht.SortDescriptions.Add(new SortDescription(nameof(AppVm.Name), ListSortDirection.Ascending));
+        ListeApps.ItemsSource = _appsAnsicht;
         ListeRessourcen.ItemsSource = _z.Ressourcen;
         ListeRechner.ItemsSource = _z.Rechner;
+        _z.SucheBeendet += SucheBeendet;
         _z.Apps.CollectionChanged += (_, _) => LeerApps.Visibility = _z.Apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         LeerApps.Visibility = _z.Apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         _z.Ressourcen.CollectionChanged += (_, _) => LeerRessourcen.Visibility = _z.Ressourcen.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -95,6 +104,13 @@ public partial class MainWindow : Window
             () => SicherungsDialoge.Exportieren(f.Fenster, _z.Konfig));
         f.Knopf("Konfiguration aus Sicherung importieren …", () => SicherungsDialoge.Importieren(f.Fenster),
             "Für eine Neuinstallation oder einen neuen PC: stellt Rechner, Ressourcen, Apps und Zugangsdaten wieder her. Appmaster startet danach neu.");
+        if (_z.AbgelehnteAnzahl > 0)
+            f.Knopf($"Entfernte Eulenwerk-Apps wieder zulassen ({_z.AbgelehnteAnzahl})", () =>
+            {
+                _z.AbgelehnteZuruecksetzen();
+                _ = _z.EulenwerkSuchenAsync();
+                Dlg.Hinweis(f.Fenster, "Wieder zugelassen", "Appmaster legt entfernte Eulenwerk-Apps bei der nächsten Suche wieder an.");
+            }, "Eine Eulenwerk-App, die du entfernst, legt die automatische Suche sonst nicht noch einmal an.");
         if (!f.Zeigen(() => int.TryParse(takt.Text, out var t) && t >= 2 ? null : "Prüfintervall: eine Zahl ab 2.")) return;
 
         _z.Konfig.Einstellungen.BeimSchliessen = Formular.Gewaehlt<SchliessenAktion>(schliessen);
@@ -155,13 +171,38 @@ public partial class MainWindow : Window
 
     // ---------------------------------------------------------------- Apps
 
+    private async void Suche_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_z.Rechner.Any(r => r.Modell.Kategorien.HasFlag(RechnerKategorie.Arbeitsrechner) || r.Modell.Kategorien.HasFlag(RechnerKategorie.Webserver)))
+        {
+            Dlg.Hinweis(this, "Keinen Rechner zum Suchen",
+                "Appmaster sucht auf Rechnern der Kategorie „Arbeitsrechner“ (Windows-Apps) und „Webserver“ (Webanwendungen). Lege unter „Rechner“ einen an oder weise einem vorhandenen eine dieser Kategorien zu.");
+            return;
+        }
+        SucheKnopf.IsEnabled = false;
+        SucheStatus.Text = "Suche läuft …";
+        SucheStatus.Visibility = Visibility.Visible;
+        try { await _z.NachRechnerAenderungAsync(); }
+        finally { SucheKnopf.IsEnabled = true; }
+    }
+
+    private void SucheBeendet(int neu)
+    {
+        _appsAnsicht.Refresh();
+        if (SucheStatus.Visibility == Visibility.Visible || neu > 0)
+        {
+            SucheStatus.Text = neu > 0 ? $"{neu} Eulenwerk-App{(neu == 1 ? "" : "s")} gefunden und angelegt." : "Keine neuen Eulenwerk-Apps gefunden.";
+            SucheStatus.Visibility = Visibility.Visible;
+        }
+    }
+
     private async void AppStart_Click(object sender, RoutedEventArgs e) => await _z.AppStartenAsync(Kontext<AppVm>(sender));
     private async void AppEnde_Click(object sender, RoutedEventArgs e) => await _z.AppBeendenAsync(Kontext<AppVm>(sender));
 
     private void AppBearbeiten_Click(object sender, RoutedEventArgs e)
     {
         var vm = Kontext<AppVm>(sender);
-        if (AppBearbeiten(vm.Modell, neu: false) != null) { _z.AlleNeuBeschriften(); _z.Speichern(); }
+        if (AppBearbeiten(vm.Modell, neu: false) != null) { _z.AlleNeuBeschriften(); _z.Speichern(); _appsAnsicht.Refresh(); }
     }
 
     private async void AppEntfernen_Click(object sender, RoutedEventArgs e)
@@ -180,6 +221,10 @@ public partial class MainWindow : Window
         var beschr = f.Text("Beschreibung", a.Beschreibung);
         var kat = f.Auswahl("Kategorie (Farbe)", Enum.GetValues<Kategorie>(), a.Kategorie, KategorieFarben.Anzeige);
         var typ = f.Auswahl("Art", Enum.GetValues<AppTyp>(), a.Typ, t => t == AppTyp.Lokal ? "Windows-Programm" : "Web-Anwendung");
+        var ort = f.Auswahl("Installiert auf / läuft auf",
+            new Rechner?[] { null }.Concat(_z.Rechner.Select(x => (Rechner?)x.Modell)).ToList(),
+            _z.Rechner.Select(x => x.Modell).FirstOrDefault(x => x.Id == a.RechnerId),
+            x => x == null ? "(nicht angegeben – Appmaster wählt nach Kategorie)" : x.Name);
         var start = f.Pfad("Startprogramm / Befehl", a.StartBefehl, ordner: false,
             hinweis: "Windows: Programm oder Befehl (z. B. dotnet). Web: optional – startet einen lokalen Server.",
             filter: "Programme|*.exe;*.bat;*.cmd;*.lnk|Alle Dateien|*.*");
@@ -211,6 +256,15 @@ public partial class MainWindow : Window
         a.Url = url.Text.Trim();
         a.Datenpfad = daten.Text.Trim();
         a.RessourcenIds = ress.Where(x => x.Haken.IsChecked == true).Select(x => x.Id).ToList();
+        a.RechnerId = Formular.Gewaehlt<Rechner?>(ort)?.Id ?? "";
+        if (a.RechnerId.Length == 0)
+        {
+            // Nicht angegeben: den wahrscheinlichen Ort nach Rechner-Kategorie wählen (Web → Webserver, Windows → Arbeitsrechner).
+            var passend = a.Typ == AppTyp.Web
+                ? _z.Rechner.Select(x => x.Modell).FirstOrDefault(x => x.IstWebserver)
+                : _z.Rechner.Select(x => x.Modell).OrderByDescending(x => x.IstLokal).FirstOrDefault(x => x.IstArbeitsrechner);
+            a.RechnerId = passend?.Id ?? "";
+        }
         return a;
     }
 
@@ -245,6 +299,13 @@ public partial class MainWindow : Window
         var rechner = f.Auswahl("Läuft auf", _z.Rechner.Select(x => x.Modell).ToList(),
             _z.Rechner.Select(x => x.Modell).FirstOrDefault(x => x.Id == r.RechnerId) ?? _z.Rechner[0].Modell,
             x => string.IsNullOrWhiteSpace(x.Adresse) ? $"{x.Name} (dieser PC)" : x.Name);
+        var ki = f.Haken("KI-Dienst (Ollama, sd-server …)", r.IstKi, "KI-Dienste laufen bevorzugt auf einem GPU-Rechner; beim Anhaken wählt Appmaster ihn oben aus.");
+        ki.Click += (_, _) =>
+        {
+            if (ki.IsChecked != true) return;
+            var gpu = rechner.Items.Cast<ComboBoxItem>().FirstOrDefault(i => i.Tag is Rechner { IstGpu: true });
+            if (gpu != null) rechner.SelectedItem = gpu;
+        };
         var pruef = f.Text("Prüfadresse (HTTP)", r.PruefUrl, "Antwortet sie, gilt die Ressource als „läuft“. Beispiel: http://athene:11434/api/version");
         var steuer = f.Auswahl("Steuerung", Enum.GetValues<Steuerung>(), r.Steuerung, s => s switch
         {
@@ -275,6 +336,7 @@ public partial class MainWindow : Window
         r.Beschreibung = beschr.Text.Trim();
         r.RechnerId = Formular.Gewaehlt<Rechner>(rechner)?.Id ?? r.RechnerId;
         r.PruefUrl = pruef.Text.Trim();
+        r.IstKi = ki.IsChecked == true;
         r.Steuerung = Formular.Gewaehlt<Steuerung>(steuer);
         r.AgentContainer = container.Text.Trim();
         r.StartBefehl = startBef.Text.Trim();
@@ -302,6 +364,7 @@ public partial class MainWindow : Window
         {
             _z.AlleNeuBeschriften();
             _z.Speichern();
+            _ = _z.NachRechnerAenderungAsync();   // neue Kategorie → gleich nach Eulenwerk-Apps suchen
         }
     }
 
@@ -317,6 +380,13 @@ public partial class MainWindow : Window
         var f = new Formular(this, neu ? "Neuer Rechner" : "Rechner bearbeiten");
         var name = f.Text("Name", r.Name, "z. B. Athene, GPU-PC, vServer");
         var adr = f.Text("Adresse", r.Adresse, "Hostname oder IP. Leer lassen für diesen PC.");
+        f.Info("Kategorien", "Wofür der Rechner gedacht ist – auch mehrere zugleich möglich.");
+        var katGpu = f.Haken("GPU-Rechner", r.IstGpu,
+            "Bevorzugter Ausführort für KI-Dienste (Ollama, sd-server …): neue KI-Ressourcen werden hier angelegt.");
+        var katArbeit = f.Haken("Arbeitsrechner", r.IstArbeitsrechner,
+            "Wahrscheinlicher Installationsort für Windows-Apps. Appmaster sucht hier automatisch nach Eulenwerk-Apps (derzeit nur auf diesem PC, also bei leerer Adresse).");
+        var katWeb = f.Haken("Webserver", r.IstWebserver,
+            "Wahrscheinlicher Ort für Web-Anwendungen. Appmaster sucht hier automatisch nach Eulenwerk-Webanwendungen (Port 80/443 und – mit Agent – den Ports der Docker-Container).");
         var mac = f.Text("MAC-Adresse (Wake-on-LAN)", r.MacAdresse, "aa:bb:cc:dd:ee:ff – nur bei Rechnern im selben Netzwerk, die per Kabel angeschlossen sind. Leer = nicht aufweckbar.");
         var bc = f.Text("Broadcast-Adresse", r.Broadcast, "Meist 255.255.255.255, oder z. B. 192.168.1.255 für das Heimnetz.");
         var art = f.Auswahl("Überwachung / Steuerung", Enum.GetValues<AgentArt>(), r.AgentArt, a => a switch
@@ -358,6 +428,9 @@ public partial class MainWindow : Window
 
         r.Name = name.Text.Trim();
         r.Adresse = adr.Text.Trim();
+        r.Kategorien = (katGpu.IsChecked == true ? RechnerKategorie.GpuRechner : 0)
+                       | (katArbeit.IsChecked == true ? RechnerKategorie.Arbeitsrechner : 0)
+                       | (katWeb.IsChecked == true ? RechnerKategorie.Webserver : 0);
         r.MacAdresse = mac.Text.Trim();
         r.Broadcast = string.IsNullOrWhiteSpace(bc.Text) ? "255.255.255.255" : bc.Text.Trim();
         r.AgentArt = Formular.Gewaehlt<AgentArt>(art);

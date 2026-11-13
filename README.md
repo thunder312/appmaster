@@ -19,6 +19,41 @@ niemand mehr braucht.
 
 ## Funktionsübersicht
 
+### Eulenwerk-Apps automatisch finden
+
+Appmaster ist vor allem für die Eulenwerk-Apps gedacht. Sie erscheinen im Apps-Tab **oben in einer eigenen Gruppe**, mit ihrem App-Logo
+(dunkle Kachel, Design-System), Rahmen und Kennzeichen in der Kategoriefarbe, Version und Rechner. **Kategorie, Name, Beschreibung, Version und Symbol
+werden automatisch gesetzt**, die App wird ohne Zutun angelegt. Gesucht wird beim Start, danach alle 15 Minuten, nach jeder Änderung an einem
+Rechner und auf Knopfdruck („Nach Eulenwerk-Apps suchen“). Entfernst du eine gefundene App, legt Appmaster sie nicht erneut an
+(*Einstellungen → Entfernte Eulenwerk-Apps wieder zulassen*).
+
+| Wo gesucht wird | Woran eine Eulenwerk-App erkannt wird |
+|---|---|
+| **Arbeitsrechner** (derzeit nur dieser PC): installierte Windows-Programme in der Registry (Hersteller *Daniel Ertl*), `%LOCALAPPDATA%\Programs`, `Program Files` | `eulenwerk.json` neben der .exe, **oder** Hersteller *Daniel Ertl* in den Dateieigenschaften, **oder** das Eulenwerk-Design-System in der Programmdatei |
+| **Webserver**: Port 80/443 und – mit Agent ab 0.2.0 – die veröffentlichten Ports laufender Docker-Container | `data-eulenwerk="…"` im `<html>`-Tag (Design-System) **oder** `/eulenwerk.json` |
+
+Die **Kategorie** kommt aus dem Manifest, sonst aus `data-eulenwerk` bzw. dem Design-System der App, sonst aus der Projekttabelle des Design-Systems.
+Das **Symbol** ist das Programmsymbol der .exe bzw. `apple-touch-icon` / `icon.png` / `favicon.ico` der Webseite (SVG-Icons wandelt Appmaster selbst in ein PNG um, siehe `Services/SvgRenderer.cs`; unterstützt werden einfache Linien-/Flächenzeichnungen ohne Verläufe, Text und CSS-Klassen).
+
+**Benötigte Ressourcen** liest Appmaster aus dem optionalen Manifest `eulenwerk.json` (alle Felder optional):
+
+```json
+{
+  "name": "BildKI",
+  "beschreibung": "Bilder aus deutschen Prompts",
+  "kategorie": "kreativ",
+  "version": "1.18.6",
+  "ressourcen": [
+    { "name": "Ollama", "ki": true, "pruefUrl": "http://{host}:11434/api/version", "container": "ollama" },
+    { "name": "sd-server FLUX", "ki": true, "pruefUrl": "http://{host}:7860/", "container": "sd-flux", "konfliktgruppe": "GPU" }
+  ]
+}
+```
+
+`{host}` wird durch den Rechner ersetzt, auf dem die Ressource angelegt wird. Mit `"ki": true` landet sie auf dem **GPU-Rechner**, sonst auf dem Rechner der App.
+Eine gleichnamige oder gleich geprüfte Ressource wird wiederverwendet, nichts doppelt angelegt. `container` steuert über den Agent des Rechners,
+alternativ `startBefehl` / `stopBefehl`. Windows-Apps legen die Datei neben die .exe (oder als `<name>.eulenwerk.json`), Web-Apps liefern sie unter `/eulenwerk.json`.
+
 ### Apps starten und beenden
 
 - **Lokale Apps** (Programm, Skript, `.bat`, Verknüpfung) und **Web-Apps** (Adresse im Browser, optional mit lokalem Startbefehl).
@@ -45,6 +80,9 @@ niemand mehr braucht.
 ### Rechner
 
 - **Dieser PC** (Adresse leer) und **entfernte Rechner** (Adresse oder IP).
+- **Kategorien** (mehrere möglich): *GPU-Rechner* (bevorzugter Ausführort von KI-Diensten – neue KI-Ressourcen landen hier), *Arbeitsrechner*
+  (Installationsort für Windows-Apps, hier sucht Appmaster automatisch nach Eulenwerk-Apps) und *Webserver* (Ort für Web-Anwendungen, hier sucht
+  Appmaster automatisch nach Eulenwerk-Webanwendungen). Bei von Hand angelegten Apps wird der Rechner nach Kategorie vorgeschlagen.
 - **Erreichbarkeit** per Ping und über den Agent.
 - **Wake-on-LAN:** Rechner per Magic Packet aufwecken (MAC- und Broadcast-Adresse). Startest du eine App, deren Ressource auf einem
   schlafenden Rechner liegt, fragt Appmaster vorher nach.
@@ -130,6 +168,7 @@ Entwicklerhilfen (Aufrufe der `Appmaster.exe`):
 | `--shot <ziel.png> [apps\|ressourcen\|rechner] [hell]` | rendert das Hauptfenster als Bild und beendet sich |
 | `--icon <ziel.ico>` | schreibt das Logo als `.ico` |
 | `--docker-test <ziel.txt>` | prüft Pfadsuche und Engine-Zustand von Docker Desktop |
+| `--suche-test <ziel.txt> [port …]` | sucht auf diesem PC und auf localhost (angegebene Ports) nach Eulenwerk-Apps und schreibt die Funde |
 | `--sicherung-test <ziel.txt>` | spielt Export, Automatik und Wiederherstellung in einem Temp-Ordner durch |
 
 Die Umgebungsvariable `APPMASTER_LOKAL` lenkt den lokalen Datenordner um (für Tests), `APPMASTER_FOTO=<ordner>` speichert von

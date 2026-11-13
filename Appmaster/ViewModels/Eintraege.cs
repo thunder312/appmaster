@@ -96,6 +96,9 @@ public sealed class RechnerVm : Beobachtbar
     public string Name => Modell.Name;
     public string Adresse => Modell.IstLokal ? "dieser PC" : Modell.Adresse;
 
+    public string KategorienText => KategorieNamen.Text(Modell.Kategorien);
+    public bool HatKategorien => Modell.Kategorien != RechnerKategorie.Keine;
+
     public RechnerZustand Zustand
     {
         get => _zustand;
@@ -193,7 +196,24 @@ public sealed class RechnerVm : Beobachtbar
     public void ModellGeaendert()
     {
         Melden(nameof(Name)); Melden(nameof(Adresse)); Melden(nameof(KannAufwecken)); Melden(nameof(KannHerunterfahren));
+        Melden(nameof(KategorienText)); Melden(nameof(HatKategorien));
     }
+}
+
+/// <summary>Anzeigenamen der Rechner-Kategorien.</summary>
+public static class KategorieNamen
+{
+    public static string Name(RechnerKategorie k) => k switch
+    {
+        RechnerKategorie.GpuRechner => "GPU-Rechner",
+        RechnerKategorie.Arbeitsrechner => "Arbeitsrechner",
+        RechnerKategorie.Webserver => "Webserver",
+        _ => "",
+    };
+
+    public static string Text(RechnerKategorie k) =>
+        string.Join(" · ", new[] { RechnerKategorie.GpuRechner, RechnerKategorie.Arbeitsrechner, RechnerKategorie.Webserver }
+            .Where(x => k.HasFlag(x)).Select(Name));
 }
 
 /// <summary>Anzeige-Hülle um eine App: läuft sie, welcher Prozess gehört ihr, in welcher Kategoriefarbe erscheint sie.</summary>
@@ -216,6 +236,45 @@ public sealed class AppVm : Beobachtbar
     public string Beschreibung => Modell.Beschreibung;
     public string KategorieName => KategorieFarben.Anzeige(Modell.Kategorie);
     public string TypText => Modell.Typ == AppTyp.Web ? "Web" : "Windows";
+    public bool IstEulenwerk => Modell.IstEulenwerk;
+    /// <summary>Gruppenüberschrift im Apps-Tab: Eulenwerk-Apps stehen zuerst.</summary>
+    public string GruppeName => Modell.IstEulenwerk ? "Eulenwerk-Apps" : "Weitere Apps";
+    public int GruppeRang => Modell.IstEulenwerk ? 0 : 1;
+    public string Initial => Modell.Name.Trim().Length > 0 ? Modell.Name.Trim()[..1].ToUpperInvariant() : "?";
+    public string VersionText => Modell.Version.Length > 0 ? "Version " + Modell.Version : "";
+    public bool HatVersion => Modell.Version.Length > 0;
+    /// <summary>Name des Rechners, auf dem die App liegt (leer = unbekannt).</summary>
+    public string RechnerText { get; set; } = "";
+    public bool HatRechner => RechnerText.Length > 0;
+
+    private System.Windows.Media.ImageSource? _symbol;
+    /// <summary>Das gefundene App-Symbol (aus dem Zwischenspeicher), oder null.</summary>
+    public System.Windows.Media.ImageSource? Symbol => _symbol ??= SymbolLaden();
+    public bool HatSymbol => Symbol != null;
+
+    private System.Windows.Media.ImageSource? SymbolLaden()
+    {
+        try
+        {
+            var datei = Steuerzentrale.SymbolDatei(Modell.Id);
+            if (!System.IO.File.Exists(datei)) return null;
+            var b = new System.Windows.Media.Imaging.BitmapImage();
+            b.BeginInit();
+            b.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            b.UriSource = new Uri(datei);
+            b.EndInit();
+            b.Freeze();
+            return b;
+        }
+        catch { return null; }
+    }
+
+    public void SymbolNeuLaden()
+    {
+        _symbol = null;
+        Melden(nameof(Symbol)); Melden(nameof(HatSymbol));
+    }
+
     public Brush KategoriePinsel => KategorieFarben.Pinsel(Modell.Kategorie, EulenwerkTheme.IstHell);
 
     public bool Laeuft
@@ -247,6 +306,8 @@ public sealed class AppVm : Beobachtbar
     {
         Melden(nameof(Name)); Melden(nameof(Beschreibung)); Melden(nameof(KategorieName)); Melden(nameof(KategoriePinsel));
         Melden(nameof(TypText)); Melden(nameof(RessourcenText));
+        Melden(nameof(IstEulenwerk)); Melden(nameof(GruppeName)); Melden(nameof(GruppeRang)); Melden(nameof(Initial));
+        Melden(nameof(VersionText)); Melden(nameof(HatVersion)); Melden(nameof(RechnerText)); Melden(nameof(HatRechner));
     }
 }
 

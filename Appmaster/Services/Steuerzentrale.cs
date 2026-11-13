@@ -14,7 +14,7 @@ namespace Appmaster.Services;
 /// weckt Rechner per Wake-on-LAN, startet beim App-Start die benötigten Ressourcen, achtet auf Konfliktgruppen
 /// (z. B. GPU-Speicher), warnt vor dem Stoppen genutzter Ressourcen und fährt nicht mehr gebrauchte herunter.
 /// </summary>
-public sealed class Steuerzentrale
+public sealed partial class Steuerzentrale
 {
     private readonly DispatcherTimer _takt = new();
     private bool _prueft;
@@ -64,6 +64,7 @@ public sealed class Steuerzentrale
                 .Select(id => Ressourcen.FirstOrDefault(r => r.Modell.Id == id)?.Name)
                 .Where(n => n != null);
             a.RessourcenText = string.Join(" · ", namen);
+            a.RechnerText = Rechner.FirstOrDefault(x => x.Modell.Id == a.Modell.RechnerId)?.Name ?? "";
             a.ModellGeaendert();
         }
         foreach (var r in Ressourcen) r.ModellGeaendert();
@@ -73,8 +74,8 @@ public sealed class Steuerzentrale
 
     public void AppHinzufuegen(AppEintrag a) { Apps.Add(new AppVm(a)); AlleNeuBeschriften(); Speichern(); }
     public void RessourceHinzufuegen(Ressource r) { Ressourcen.Add(new RessourceVm(r)); AlleNeuBeschriften(); Speichern(); _ = ZustandAktualisierenAsync(); }
-    public void RechnerHinzufuegen(Rechner r) { Rechner.Add(new RechnerVm(r)); AlleNeuBeschriften(); Speichern(); _ = ZustandAktualisierenAsync(); }
-    public void AppEntfernen(AppVm a) { Apps.Remove(a); Speichern(); }
+    public void RechnerHinzufuegen(Rechner r) { Rechner.Add(new RechnerVm(r)); AlleNeuBeschriften(); Speichern(); _ = NachRechnerAenderungAsync(); }
+    public void AppEntfernen(AppVm a) { Apps.Remove(a); AutoAppVergessen(a); Speichern(); }
 
     public bool RessourceEntfernen(RessourceVm r)
     {
@@ -117,6 +118,7 @@ public sealed class Steuerzentrale
                 if (r.Zustand != Zustand.Startet) r.Zustand = z;
         }
         finally { _prueft = false; }
+        SucheBeiTaktAnstossen();
     }
 
     private static async Task RechnerAktualisierenAsync(RechnerVm v)
